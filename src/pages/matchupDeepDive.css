@@ -1,0 +1,144 @@
+/* ----- Confidence Visualization ----- */
+.confidence-bar {
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: #fff;
+  font-weight: bold;
+  width: 80px;
+  margin: 0 auto;
+  position: relative;
+  cursor: help;
+}
+
+/* Tooltip */
+.confidence-bar::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.confidence-bar:hover::after {
+  opacity: 1;
+}
+
+.confidence-bar.high {
+  background-color: #00c851;
+}
+.confidence-bar.medium {
+  background-color: #ffbb33;
+}
+.confidence-bar.low {
+  background-color: #ff4444;
+}
+/* Make sure tooltips can overflow out of table cells */
+.bet-table td {
+  position: relative;
+  overflow: visible; /* critical so ::after can show outside cell */
+}
+
+/* ----- Confidence Visualization ----- */
+.confidence-bar {
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 13px;
+  color: #fff;
+  font-weight: bold;
+  width: 90px;
+  text-align: center;
+  margin: 0 auto;
+  position: relative;
+  cursor: help;
+}
+
+/* Custom tooltip using data-tooltip attribute */
+.confidence-bar::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.88);
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 30;
+  max-width: 280px;
+}
+
+/* small arrow */
+.confidence-bar::before {
+  content: "";
+  position: absolute;
+  bottom: 112%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.88) transparent transparent transparent;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 31;
+}
+
+.confidence-bar:hover::after,
+.confidence-bar:hover::before {
+  opacity: 1;
+}
+
+.confidence-bar.high {
+  background-color: #00c851; /* Green */
+}
+.confidence-bar.medium {
+  background-color: #ffbb33; /* Yellow */
+}
+.confidence-bar.low {
+  background-color: #ff4444; /* Red */
+}
+
+/* ----- Legend / How it works ----- */
+.how-it-works {
+  margin-top: 18px;
+}
+
+.how-it-works h3 {
+  margin: 10px 0 8px;
+}
+
+.how-it-works ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.legend {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.legend-green { background-color: #00c851; }
+.legend-yellow { background-color: #ffbb33; }
+.legend-red { background-color: #ff4444; }

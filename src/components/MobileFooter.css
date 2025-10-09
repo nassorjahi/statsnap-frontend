@@ -1,0 +1,117 @@
+/* ================================
+   📱 Mobile Footer Navigation
+   ================================ */
+
+.mobile-footer {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(to right, #00274d, #004ba0);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+  padding: 8px 0;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+}
+
+.footer-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.2s ease-in-out;
+}
+
+.footer-link:hover {
+  color: #ffcc00;
+}
+
+.footer-link svg {
+  margin-bottom: 2px;
+}
+
+/* 🔥 Active highlight */
+.footer-link.active {
+  color: #ffcc00;
+}
+
+/* 📱 Only show on small screens */
+@media (max-width: 768px) {
+  .mobile-footer {
+    display: flex;
+  }
+}
+/* ================================
+   📱 Mobile Footer Navigation (Glass Effect)
+   ================================ */
+
+.mobile-footer {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  /* 👇 Frosted glass gradient */
+  background: rgba(0, 40, 90, 0.7);
+  background: linear-gradient(
+    to right,
+    rgba(0, 39, 77, 0.65),
+    rgba(0, 75, 160, 0.65)
+  );
+  backdrop-filter: blur(12px); /* 🧊 The magic line */
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.25);
+  padding: 8px 0;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 999;
+  transition: transform 0.35s ease-in-out, opacity 0.25s ease;
+}
+
+/* 🔗 Links inside footer */
+.footer-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  transition: color 0.2s ease-in-out;
+}
+
+.footer-link svg {
+  margin-bottom: 2px;
+}
+
+/* ✨ Hover and Active states */
+.footer-link:hover {
+  color: #ffcc00;
+}
+
+.footer-link.active {
+  color: #ffcc00;
+}
+
+/* 👇 Hide/Show animation classes (already defined earlier) */
+.mobile-footer.hide {
+  transform: translateY(100%);
+  opacity: 0;
+}
+.mobile-footer.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* 📱 Show only on mobile */
+@media (max-width: 768px) {
+  .mobile-footer {
+    display: flex;
+  }
+}

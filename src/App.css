@@ -1,0 +1,652 @@
+/* ================================
+🏀 NBA Dashboard Core Styles
+-----------------------------------
+Functional layout, clean visuals,
+ready for future polish pass.
+================================= */
+:root {
+  --bg-color: #f8fafc;
+  --text-color: #111827;
+  --card-bg: rgba(255, 255, 255, 0.25);
+  --card-border: rgba(255, 255, 255, 0.4);
+}
+.page {
+  min-height: calc(100vh - 80px);
+  padding: 20px;
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+[data-theme="dark"] {
+  --bg-color: #0f172a;
+  --text-color: #f8fafc;
+  --card-bg: rgba(30, 41, 59, 0.6);
+  --card-border: rgba(148, 163, 184, 0.3);
+}
+
+
+:root {
+  --team-gradient: radial-gradient(circle at center, #1e3c72, #2a5298);
+  --card-bg: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --line: #e5e7eb;
+  --shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  --radius: 16px;
+}
+
+body {
+  margin: 0;
+  background: #f4f6f9;
+  color: var(--text);
+  font-family: "Inter", system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+/* ======= PAGE CONTAINER ======= */
+.page {
+  background: var(--bg-color);
+  color: var(--text-color);
+  transition: background 0.4s ease, color 0.4s ease;
+}
+
+/* ======= HEADER ======= */
+.header h1 {
+  text-align: center;
+  margin-bottom: 22px;
+  font-weight: 700;
+}
+
+/* ======= CONTROLS ======= */
+.controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.controls select {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.controls select:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+/* ======= GRID LAYOUT ======= */
+.grid {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ======= CARD BASE ======= */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  transition: background 0.4s ease, border 0.4s ease, color 0.4s ease;
+}
+
+/* ======= PLAYER CARD ======= */
+.player-card {
+  padding: 16px;
+  text-align: center;
+}
+
+.photo-shell {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.photo-circle {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: var(--team-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.photo-circle img {
+  width: 86%;
+  height: 86%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.name-bar {
+  background: var(--team-gradient);
+  color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  font-weight: bold;
+  margin-top: 6px;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.team-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.pos-pill {
+  background: #111827;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+/* ======= SUMMARY CARD ======= */
+.summary-card {
+  padding: 18px;
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.summary-table th {
+  background: var(--team-gradient);
+  color: #fff;
+  padding: 12px 8px;
+  text-align: center;
+}
+
+.summary-table td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.summary-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+/* ======= GAMES CARD ======= */
+.games-card {
+  padding: 18px;
+  margin-top: 26px;
+}
+
+.card-title {
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+.games-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.games-table th {
+  background: var(--team-gradient);
+  color: #fff;
+  padding: 10px;
+}
+
+.games-table td {
+  padding: 10px;
+  text-align: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.games-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+/* ======= METRIC SELECT ======= */
+.metric-select {
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.metric-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* ======= AXIS TEXT ======= */
+.yAxis text {
+  dominant-baseline: middle;
+}
+
+/* ======= EMPTY STATES ======= */
+.empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+}
+
+.empty.big {
+  font-size: 20px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+/* ======= TEAM INSIGHTS HEADER ======= */
+.team-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  padding: 20px 28px;
+  margin-bottom: 24px;
+}
+
+.team-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.team-header-icon {
+  font-size: 36px;
+}
+
+.team-header-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.team-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.team-header select {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.team-header select:hover,
+.team-header select:focus {
+  border-color: #3b82f6;
+  outline: none;
+}
+
+@media (max-width: 700px) {
+  .team-header {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+  .team-header-controls {
+    justify-content: center;
+  }
+}
+
+/* ======= TEAM INFO CARD ======= */
+.team-meta-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 20px 24px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+}
+
+.team-meta-card img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.team-meta-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.team-meta-name {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.team-meta-stats {
+  font-size: 14px;
+  color: var(--muted);
+}
+.metrics-table {
+  padding: 20px;
+  margin-top: 20px;
+}
+
+.section-title {
+  margin-bottom: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.eff-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.eff-table th {
+  background: var(--team-gradient);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 8px;
+}
+
+.eff-table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.eff-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.eff-table tbody tr:hover {
+  background: #f3f4f6;
+  transition: 0.2s ease;
+}
+/* Section Titles */
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+/* Clean Table Design */
+.nice-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  font-size: 15px;
+}
+
+.nice-table th {
+  background: var(--team-gradient);
+  color: #fff;
+  padding: 10px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.nice-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+
+.nice-table tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.nice-table tbody tr:hover {
+  background: #f3f4f6;
+  transition: 0.2s ease;
+}
+
+/* Impact Card Specific */
+.impact-card {
+  margin-top: 26px;
+}
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  background: rgba(0, 0, 0, 0.05);
+  transition: 0.2s;
+}
+
+.sortable::after {
+  content: "";
+  padding-left: 4px;
+  color: #9ca3af;
+}
+
+/* === GLOBAL RESET === */
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+  background: radial-gradient(circle at top, #f8fafc, #e2e8f0);
+  color: #111827;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  padding: 40px 5%;
+  min-height: 100vh;
+  background: var(--team-gradient, linear-gradient(to bottom, #f8fafc, #e2e8f0));
+  transition: background 0.5s ease;
+}
+
+/* === HEADERS === */
+.header h1 {
+  text-align: center;
+  color: #0f172a;
+  font-size: 1.9rem;
+  margin-bottom: 30px;
+  font-weight: 800;
+}
+
+/* === SELECT CONTROLS === */
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.controls select {
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  transition: all 0.3s ease;
+}
+
+.controls select:hover {
+  border-color: #2563eb;
+}
+
+/* === GRID LAYOUT === */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* === GLASS CARD === */
+.card {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.15);
+}
+
+/* === PLAYER CARD === */
+.player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.photo-shell {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.photo-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.player-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.name-bar {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.team-logo {
+  width: 22px;
+  height: 22px;
+}
+
+.team-name {
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+.pos-pill {
+  background: #2563eb;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 2px 8px;
+}
+
+/* === TABLES === */
+.summary-table,
+.games-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 0.95rem;
+  overflow: hidden;
+}
+
+.summary-table thead,
+.games-table thead {
+  background: rgba(37, 99, 235, 0.9);
+  color: #fff;
+}
+
+.summary-table th,
+.games-table th,
+.summary-table td,
+.games-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.summary-table tr:nth-child(even),
+.games-table tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* === EMPTY STATE === */
+.empty.big {
+  text-align: center;
+  font-size: 1.1rem;
+  color: #6b7280;
+  margin-top: 50px;
+}
+:root {
+  --bg-color: #f8fafc;
+  --text-color: #111827;
+  --card-bg: #ffffff;
+}
+
+[data-theme="dark"] {
+  --bg-color: #0f172a;
+  --text-color: #f8fafc;
+  --card-bg: #1e293b;
+}

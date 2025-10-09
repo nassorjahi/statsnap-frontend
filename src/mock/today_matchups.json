@@ -1,0 +1,31 @@
+{
+  "games": [
+    {
+      "id": "2025-10-06-LAL@DEN",
+      "home": { "abbr": "DEN", "nickname": "Nuggets" },
+      "away": { "abbr": "LAL", "nickname": "Lakers" },
+      "leaders": {
+        "home": {
+          "PTS": { "name": "J. Murray", "avg": 24.1, "last5": 26.2, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/2991230.png" },
+          "REB": { "name": "N. Jokić", "avg": 12.3, "last5": 11.6, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3112335.png" },
+          "AST": { "name": "N. Jokić", "avg": 9.7, "last5": 10.2, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3112335.png" },
+          "3PM": { "name": "M. Porter Jr.", "avg": 2.8, "last5": 3.0, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/4395628.png" },
+          "BLK": { "name": "A. Gordon", "avg": 0.8, "last5": 1.1, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3064290.png" }
+        },
+        "away": {
+          "PTS": { "name": "A. Davis", "avg": 25.4, "last5": 27.1, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/6583.png" },
+          "REB": { "name": "A. Davis", "avg": 12.5, "last5": 13.2, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/6583.png" },
+          "AST": { "name": "L. James", "avg": 7.3, "last5": 8.1, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/1966.png" },
+          "3PM": { "name": "D. Russell", "avg": 2.7, "last5": 2.4, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3136776.png" },
+          "BLK": { "name": "J. Hayes", "avg": 0.9, "last5": 0.8, "photo": "https://a.espncdn.com/i/headshots/nba/players/full/4395651.png" }
+        }
+      },
+      "h2h": {
+        "last5": [
+          { "total": 219 }, { "total": 223 }, { "total": 211 }, { "total": 227 }, { "total": 216 }
+        ],
+        "suggested_total": 219.5
+      }
+    }
+  ]
+}

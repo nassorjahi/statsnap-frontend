@@ -1,0 +1,34 @@
+.sp-card{
+  background:#fff; border-radius:16px;
+  box-shadow:0 10px 22px rgba(0,0,0,.06);
+  padding:16px 18px; max-width:1100px; margin:0 auto 22px;
+}
+.sp-title{ font-size:16px; font-weight:900; color:#0f172a; margin:0 0 10px }
+
+.sp-rowWrap{ margin-bottom:10px }
+.sp-rowHeader{
+  font-size:12px; font-weight:800; letter-spacing:.5px;
+  color:#64748b; text-transform:uppercase; margin:4px 0 8px 6px;
+}
+
+.sp-row{
+  display:grid;
+  grid-template-columns:repeat(5, minmax(160px, 1fr));
+  gap:10px 12px;
+}
+
+.sp-chip{
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  background:#f8fafc; border:1px solid #e5e7eb; border-radius:9999px;
+  padding:8px 12px; box-shadow:0 2px 8px rgba(15,23,42,.05);
+  font-weight:700; color:#0f172a; min-height:38px;
+}
+.sp-chip:hover{ background:#eef5ff; border-color:#dbeafe }
+
+.sp-dot{ width:8px; height:8px; border-radius:50%; background:#2563eb; flex:0 0 8px }
+.sp-dot.alt{ background:#16a34a } /* home row uses green dot */
+.sp-text{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100% }
+
+@media (max-width: 1024px){
+  .sp-row{ grid-template-columns:repeat(2, minmax(160px, 1fr)); }
+}

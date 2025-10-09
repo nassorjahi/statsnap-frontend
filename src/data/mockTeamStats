@@ -1,0 +1,20 @@
+// src/data/mockTeamStats.js
+
+const mockTeamStats = {
+  Nuggets: {
+    pace: 101.2,
+    pointsFor: 115.3,
+    pointsAgainst: 110.8,
+    last10Record: "7-3",
+    last10Points: [118, 111, 116, 105, 120, 109, 114, 117, 112, 121],
+  },
+  Lakers: {
+    pace: 99.5,
+    pointsFor: 113.8,
+    pointsAgainst: 111.5,
+    last10Record: "6-4",
+    last10Points: [104, 108, 115, 120, 111, 116, 112, 107, 119, 121],
+  },
+};
+
+export default mockTeamStats;

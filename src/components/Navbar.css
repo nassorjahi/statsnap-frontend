@@ -1,0 +1,191 @@
+/* 🌎 Glass Navbar Container */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 14px 36px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: background 0.4s ease, color 0.4s ease, backdrop-filter 0.4s ease;
+}
+/* 🌀 Scroll darkening effect */
+.navbar.scrolled {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transition: all 0.4s ease;
+}
+
+[data-theme="dark"] .navbar.scrolled {
+  background: rgba(15, 23, 42, 0.75);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.8);
+}
+
+/* Dark mode version automatically adjusts */
+[data-theme="dark"] .navbar {
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+
+/* 🏀 Logo */
+.nav-logo {
+  font-size: 20px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-color);
+  transition: color 0.4s ease;
+}
+
+/* 🔗 Nav Links */
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 28px;
+  margin: 0;
+  padding: 0;
+  align-items: center;
+}
+.nav-link,
+.active-link {
+  color: var(--text-color);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #60a5fa;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.active-link {
+  border-bottom: 2px solid #2563eb;
+  font-weight: 700;
+}
+
+
+/* 🌙 Dark Mode Toggle */
+.theme-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 22px;
+  transition: transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.theme-toggle .icon {
+  display: inline-block;
+  transition: transform 0.5s ease, filter 0.4s ease;
+}
+
+.theme-toggle.light .icon {
+  transform: rotate(0deg);
+  filter: drop-shadow(0 0 4px #facc15); /* yellow glow */
+}
+
+.theme-toggle.dark .icon {
+  transform: rotate(180deg);
+  filter: drop-shadow(0 0 4px #60a5fa); /* blue glow */
+}
+
+.theme-toggle:hover {
+  transform: scale(1.2);
+}
+
+/* 🍔 Hamburger Menu for Mobile */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  cursor: pointer;
+  width: 26px;
+  height: 22px;
+  gap: 4px;
+  z-index: 1100;
+}
+
+.hamburger span {
+  display: block;
+  height: 3px;
+  background: var(--text-color);
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+
+/* Hamburger animation */
+.hamburger.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* 📱 Mobile Menu Behavior */
+@media (max-width: 768px) {
+  .nav-links {
+    position: fixed;
+    top: 60px;
+    right: -100%;
+    width: 70%;
+    height: calc(100vh - 60px);
+    background: var(--bg-color);
+    flex-direction: column;
+    gap: 30px;
+    justify-content: flex-start;
+    align-items: center;
+    padding-top: 60px;
+    transition: right 0.4s ease;
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-links.active {
+    right: 0;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .nav-link {
+    font-size: 18px;
+  }
+
+  .theme-toggle {
+    font-size: 24px;
+  }
+}
+/* 📊 Scroll Progress Bar */
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+  z-index: 1200;
+  width: 0%;
+  transition: width 0.2s ease-out;
+}
+
+/* Dark mode variant */
+[data-theme="dark"] .scroll-progress {
+  background: linear-gradient(90deg, #38bdf8, #1e40af);
+}

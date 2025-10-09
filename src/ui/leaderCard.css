@@ -1,0 +1,42 @@
+.lc-card{
+  position:relative;
+  width:190px; height:230px;
+  background:#fff; border-radius:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.06);
+  padding:12px 12px; text-align:center; box-sizing:border-box;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+}
+
+.lc-badge{ position:absolute; top:8px; right:8px; width:20px; height:20px; opacity:.9 }
+
+.lc-cat{
+  font-weight:800; font-size:11px; color:#475569; letter-spacing:.35px;
+  margin-bottom:6px; text-transform:uppercase;
+}
+
+.lc-headshot{
+  width:64px; height:64px; border-radius:50%;
+  object-fit:cover; border:1px solid #e5e7eb; margin:0 auto 8px;
+}
+
+.lc-player{
+  font-weight:800; font-size:13.5px; color:#0f172a;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+}
+
+.lc-pos{
+  margin-top:4px; font-weight:700; color:#9ca3af; font-size:11.5px; letter-spacing:.5px;
+}
+
+.lc-stats{
+  margin-top:8px; width:100%;
+  background:#f8fafc; border:1px solid #e5e7eb; border-radius:10px; padding:8px;
+}
+
+.lc-statRow{
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12.5px; margin:2px 0;
+}
+
+.lc-statLabel{ color:#64748b; font-weight:700; margin-right:8px }
+.lc-statValue{ color:#111827; font-weight:800 }

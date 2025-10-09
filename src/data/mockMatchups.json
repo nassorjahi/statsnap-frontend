@@ -1,0 +1,36 @@
+{
+  "date": "2025-10-06",
+  "games": [
+    {
+      "id": 1,
+      "homeTeam": "Los Angeles Lakers",
+      "homeLogo": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+      "awayTeam": "Denver Nuggets",
+      "awayLogo": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+      "leaders": {
+        "home": {
+          "PTS": { "player": "LeBron James", "value": 27.4, "pos": "SF", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/1966.png" },
+          "REB": { "player": "Anthony Davis", "value": 12.1, "pos": "C", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/6583.png" },
+          "AST": { "player": "D'Angelo Russell", "value": 6.8, "pos": "PG", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/2992.png" },
+          "3PM": { "player": "Austin Reaves", "value": 2.4, "pos": "SG", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/4567379.png" },
+          "BLK": { "player": "Anthony Davis", "value": 2.2, "pos": "C", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/6583.png" }
+        },
+        "away": {
+          "PTS": { "player": "Nikola Jokic", "value": 25.6, "pos": "C", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3112335.png" },
+          "REB": { "player": "Nikola Jokic", "value": 11.8, "pos": "C", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3112335.png" },
+          "AST": { "player": "Jamal Murray", "value": 7.3, "pos": "PG", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/3134907.png" },
+          "3PM": { "player": "Michael Porter Jr.", "value": 3.1, "pos": "SF", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/4277956.png" },
+          "BLK": { "player": "Aaron Gordon", "value": 1.0, "pos": "PF", "photo": "https://a.espncdn.com/i/headshots/nba/players/full/2968436.png" }
+        }
+      },
+      "h2hTotals": [
+        { "date": "2025-03-15", "totalPoints": 218 },
+        { "date": "2025-01-08", "totalPoints": 207 },
+        { "date": "2024-12-22", "totalPoints": 225 },
+        { "date": "2024-11-10", "totalPoints": 212 },
+        { "date": "2024-10-25", "totalPoints": 219 }
+      ]
+    }
+  ]
+}
+

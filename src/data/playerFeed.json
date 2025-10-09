@@ -1,0 +1,26 @@
+[
+  {
+    "PLAYER FULL NAME": "Jayson Tatum",
+    "DATE": "10/02/2025",
+    "OWN TEAM": "BOS",
+    "OPPONENT TEAM": "NYK",
+    "PTS": 29,
+    "A": 4,
+    "TOT": 11,
+    "3P": 3,
+    "USAGE RATE (%)": 27.5,
+    "DAYS REST": 2
+  },
+  {
+    "PLAYER FULL NAME": "Stephen Curry",
+    "DATE": "10/02/2025",
+    "OWN TEAM": "GSW",
+    "OPPONENT TEAM": "LAL",
+    "PTS": 33,
+    "A": 7,
+    "TOT": 5,
+    "3P": 6,
+    "USAGE RATE (%)": 31.1,
+    "DAYS REST": 1
+  }
+]
