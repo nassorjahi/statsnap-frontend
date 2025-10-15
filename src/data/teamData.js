@@ -1,7 +1,8 @@
 // src/data/teamData.js
 
 // 🏀 API endpoint for local server
-export const API_URL = "http://localhost:5000/api/player-stats";
+export const API_URL = "https://statsnap-backend.onrender.com";
+
 
 // ✅ ESPN team logo codes
 export const espnLogoCode = {

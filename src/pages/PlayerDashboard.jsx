@@ -15,6 +15,38 @@ import {
 } from "recharts";
 import { fetchEspnHeadshotUrl } from "../utils/playerImageFetcher";
 
+// ---------- Helpers ----------
+const normalize = (v) => (v == null ? "" : String(v).trim().toLowerCase());
+
+// Parse a variety of date formats safely (ISO, MM/DD/YYYY, YYYY-MM-DD, etc.)
+const parseGameDate = (raw) => {
+  if (!raw) return NaN;
+  const d = new Date(raw);
+  if (!isNaN(d)) return d;
+  // Try MM/DD/YYYY
+  const m = String(raw).match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (m) {
+    const [_, mm, dd, yyyy] = m;
+    return new Date(`${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}T00:00:00Z`);
+  }
+  return NaN;
+};
+
+// Deduplicate while preserving first-seen display value; sort case-insensitively
+const uniqueSortedDisplay = (values) => {
+  const seen = new Set();
+  const out = [];
+  for (const v of values) {
+    const key = normalize(v);
+    if (!key) continue;
+    if (!seen.has(key)) {
+      seen.add(key);
+      out.push(v);
+    }
+  }
+  return out.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+};
+
 export default function PlayerDashboard() {
   const [rows, setRows] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState("");
@@ -34,12 +66,17 @@ export default function PlayerDashboard() {
     BLK: "BL",
   };
 
+  // Allow env override, fall back to localhost (keeps current behavior intact)
+  const API_BASE =
+    (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
+    "http://localhost:5000";
+
   // 🧠 Fetch data
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/player-stats")
+      .get(`${API_BASE}/api/player-stats`)
       .then((res) => {
-        const data = res.data || [];
+        const data = Array.isArray(res.data) ? res.data : [];
         setRows(data);
         console.log("✅ Player data loaded:", data.length);
       })
@@ -47,57 +84,62 @@ export default function PlayerDashboard() {
         console.error("❌ API Error:", err);
         setError("Could not load player data.");
       });
-  }, []);
+  }, [API_BASE]);
 
-  // 🧩 Dropdown lists
+  // 🧩 Dropdown lists (case-insensitive, deduped)
   const teams = useMemo(() => {
-    const set = new Set();
-    rows.forEach((r) => {
-      const t = (r["OWN TEAM"] || "").trim();
-      if (t) set.add(t);
-    });
-    return Array.from(set).sort();
+    const vals = rows.map((r) => (r["OWN TEAM"] || "").trim()).filter(Boolean);
+    return uniqueSortedDisplay(vals);
   }, [rows]);
 
   const roster = useMemo(() => {
     if (!selectedTeam) return [];
-    const team = selectedTeam.trim();
-    return Array.from(
-      new Set(
-        rows
-          .filter((r) => (r["OWN TEAM"] || "").trim() === team)
-          .map((r) => r["PLAYER FULL NAME"])
-      )
-    ).sort();
+    const targetTeam = normalize(selectedTeam);
+    const vals = rows
+      .filter((r) => normalize(r["OWN TEAM"]) === targetTeam)
+      .map((r) => r["PLAYER FULL NAME"])
+      .filter(Boolean);
+    return uniqueSortedDisplay(vals);
   }, [rows, selectedTeam]);
 
   const opponents = useMemo(() => {
-    const set = new Set();
-    rows.forEach((r) => {
-      const t = (r["OPPONENT TEAM"] || "").trim();
-      if (t) set.add(t);
-    });
-    return Array.from(set).sort();
+    const vals = rows.map((r) => (r["OPPONENT TEAM"] || "").trim()).filter(Boolean);
+    return uniqueSortedDisplay(vals);
   }, [rows]);
 
-  // 🧮 Player-specific rows
+  // 🧮 Player-specific rows (normalized filters + safe date sort)
   const playerRows = useMemo(() => {
     if (!selectedPlayer) return [];
-    let filtered = rows.filter((r) => r["PLAYER FULL NAME"] === selectedPlayer);
-    if (selectedOpponent && selectedOpponent !== "All Opponents") {
-      filtered = filtered.filter((r) => r["OPPONENT TEAM"] === selectedOpponent);
+    const playerKey = normalize(selectedPlayer);
+    const oppKey =
+      selectedOpponent && selectedOpponent !== "All Opponents"
+        ? normalize(selectedOpponent)
+        : null;
+
+    let filtered = rows.filter((r) => normalize(r["PLAYER FULL NAME"]) === playerKey);
+    if (oppKey) {
+      filtered = filtered.filter((r) => normalize(r["OPPONENT TEAM"]) === oppKey);
     }
-    return filtered.sort((a, b) => new Date(b["DATE"]) - new Date(a["DATE"]));
+
+    return filtered.sort((a, b) => {
+      const dA = parseGameDate(a["DATE"]);
+      const dB = parseGameDate(b["DATE"]);
+      if (isNaN(dA) && isNaN(dB)) return 0;
+      if (isNaN(dA)) return 1;
+      if (isNaN(dB)) return -1;
+      return dB - dA; // newest → oldest
+    });
   }, [rows, selectedPlayer, selectedOpponent]);
 
+  // 🧮 Averages
   const averageFor = (n) => {
     if (!playerRows.length) return {};
-    const games = playerRows.slice(0, n);
+    const games = playerRows.slice(0, Math.max(1, Math.min(n, playerRows.length)));
     const out = {};
     STAT_KEYS.forEach((key) => {
       const col = columnMap[key];
       const avg =
-        games.reduce((sum, g) => sum + Number(g[col] || 0), 0) / games.length;
+        games.reduce((sum, g) => sum + (Number(g?.[col]) || 0), 0) / games.length;
       out[key] = avg.toFixed(1);
     });
     return out;
@@ -108,7 +150,7 @@ export default function PlayerDashboard() {
   const last3 = averageFor(3);
   const last1 = averageFor(1);
 
-  // 🧠 Weighted projection
+  // 🧠 Weighted projection (most recent games weighted higher)
   const nextGameProjection = useMemo(() => {
     if (playerRows.length === 0) return {};
     const games = playerRows.slice(0, 10);
@@ -119,23 +161,25 @@ export default function PlayerDashboard() {
       let ws = 0,
         wt = 0;
       games.forEach((g, i) => {
-        const v = Number(g[col]) || 0;
+        const v = Number(g?.[col]) || 0;
         const w = weights[i] || 0.015;
         ws += v * w;
         wt += w;
       });
-      out[key] = (ws / wt).toFixed(1);
+      out[key] = wt ? (ws / wt).toFixed(1) : "0.0";
     });
     return out;
   }, [playerRows]);
 
-  // 🧩 Vs Opponent Stats
+  // 🧩 Vs Opponent Stats (normalized)
   const opponentAvg = useMemo(() => {
-    if (!selectedOpponent || selectedOpponent === "All Opponents") return null;
+    if (!selectedOpponent || selectedOpponent === "All Opponents" || !selectedPlayer)
+      return null;
+
+    const playerKey = normalize(selectedPlayer);
+    const oppKey = normalize(selectedOpponent);
     const games = rows.filter(
-      (r) =>
-        r["PLAYER FULL NAME"] === selectedPlayer &&
-        r["OPPONENT TEAM"] === selectedOpponent
+      (r) => normalize(r["PLAYER FULL NAME"]) === playerKey && normalize(r["OPPONENT TEAM"]) === oppKey
     );
     if (!games.length) return null;
 
@@ -143,21 +187,21 @@ export default function PlayerDashboard() {
     STAT_KEYS.forEach((key) => {
       const col = columnMap[key];
       const avg =
-        games.reduce((sum, g) => sum + Number(g[col] || 0), 0) / games.length;
+        games.reduce((sum, g) => sum + (Number(g?.[col]) || 0), 0) / games.length;
       out[key] = avg.toFixed(1);
     });
     return out;
   }, [rows, selectedPlayer, selectedOpponent]);
 
-  // ⚡ Team Summary — Top 5 by Points
+  // ⚡ Team Summary — Top 5 by Points (normalized team match)
   const teamSummary = useMemo(() => {
     if (!showTeamSummary || !selectedTeam) return [];
-    const teamRows = rows.filter(
-      (r) => (r["OWN TEAM"] || "").trim() === selectedTeam
-    );
+    const teamKey = normalize(selectedTeam);
+    const teamRows = rows.filter((r) => normalize(r["OWN TEAM"]) === teamKey);
     const grouped = {};
     teamRows.forEach((r) => {
       const player = r["PLAYER FULL NAME"];
+      if (!player) return;
       grouped[player] = grouped[player] || { PTS: 0, G: 0 };
       grouped[player].PTS += Number(r["PTS"] || 0);
       grouped[player].G += 1;
@@ -165,19 +209,22 @@ export default function PlayerDashboard() {
     return Object.entries(grouped)
       .map(([player, data]) => ({
         player,
-        ppg: (data.PTS / data.G).toFixed(1),
+        ppg: data.G ? (data.PTS / data.G).toFixed(1) : "0.0",
       }))
-      .sort((a, b) => b.ppg - a.ppg)
+      .sort((a, b) => Number(b.ppg) - Number(a.ppg))
       .slice(0, 5);
   }, [rows, selectedTeam, showTeamSummary]);
 
-  // 🧩 Headshot fetcher
+  // 🧩 Headshot fetcher (robust: find by normalized name first)
   useEffect(() => {
     if (!selectedPlayer) {
       setPlayerPhotoUrl(null);
       return;
     }
-    const row = rows.find((r) => r["PLAYER FULL NAME"] === selectedPlayer);
+    const playerKey = normalize(selectedPlayer);
+    const row =
+      rows.find((r) => normalize(r["PLAYER FULL NAME"]) === playerKey) ||
+      rows.find((r) => r["PLAYER FULL NAME"] === selectedPlayer); // fallback exact
     const id = row ? row["PLAYER-ID"] : null;
 
     let cancelled = false;
