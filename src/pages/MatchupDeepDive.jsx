@@ -1,10 +1,10 @@
 // ==========================================================
-// 🏀 MATCHUP DEEP DIVE — LIVE DATA EDITION
+// 🏀 MATCHUP DEEP DIVE — UNIVERSAL LIVE API EDITION
 // ----------------------------------------------------------
-// ✅ Pulls live data from backend APIs
-// ✅ Dynamically lists all teams
+// ✅ Loads all NBA teams dynamically from /api/ab/teams
+// ✅ Works with any live API data (no hardcoding)
 // ✅ Auto-generates Smart Bets + Head-to-Head
-// ✅ Fully integrated with /api/ab/player-feed, /api/ab/games/today, /api/ab/teams
+// ✅ Uses /api/ab/player-feed, /api/ab/games/today, /api/ab/teams
 // ==========================================================
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -27,7 +27,7 @@ export default function MatchupDeepDive() {
   const [error, setError] = useState("");
 
   // =====================================================
-  // 1️⃣ Load Live Data
+  // 1️⃣ Load Live Data (Dynamic Team List)
   // =====================================================
   useEffect(() => {
     const loadData = async () => {
@@ -38,16 +38,34 @@ export default function MatchupDeepDive() {
           axios.get(`${API_URL}/ab/teams`),
         ]);
 
-        setGames(gamesRes.data?.response || gamesRes.data?.data || []);
-        setPlayerFeed(playerRes.data?.response || playerRes.data?.data || []);
+        const gamesData = gamesRes.data?.response || gamesRes.data?.data || [];
+        const playerData =
+          playerRes.data?.response || playerRes.data?.data || [];
 
-        const teamList =
-          teamsRes.data?.data?.map((t) => t.name || t.Team) ||
-          teamsRes.data?.response?.map((t) => t.name || t.Team) ||
-          [];
-        setTeams([...new Set(teamList)].sort((a, b) => a.localeCompare(b)));
+        // Build team list from /teams API OR fallback to unique playerFeed names
+        let teamList = [];
+        const rawTeams =
+          teamsRes.data?.data || teamsRes.data?.response || [];
+
+        if (Array.isArray(rawTeams) && rawTeams.length > 0) {
+          teamList = rawTeams
+            .map((t) => t.Team || t.team_name || t.name)
+            .filter(Boolean);
+        }
+
+        // fallback from player feed
+        if (!teamList.length && playerData.length > 0) {
+          teamList = playerData
+            .map((p) => p["OWN TEAM"])
+            .filter(Boolean)
+            .filter((v, i, a) => a.indexOf(v) === i);
+        }
+
+        setGames(gamesData);
+        setPlayerFeed(playerData);
+        setTeams(teamList.sort((a, b) => a.localeCompare(b)));
       } catch (err) {
-        console.error("❌ Error loading live data:", err.message);
+        console.error("❌ Error loading live data:", err);
         setError("Failed to load live NBA data.");
       }
     };
@@ -55,7 +73,7 @@ export default function MatchupDeepDive() {
   }, []);
 
   // =====================================================
-  // 2️⃣ Player logic + Smart Bets
+  // 2️⃣ Player Logic + Smart Bets
   // =====================================================
   const calcBet = (stat, p, isHome) => {
     const avg = Number(p[stat]) || 0;
@@ -69,7 +87,13 @@ export default function MatchupDeepDive() {
 
   const handleTeamSelect = (team, isHome) => {
     if (!team) return;
-    const teamPlayers = playerFeed.filter((p) => p["OWN TEAM"] === team);
+
+    const teamPlayers = playerFeed.filter(
+      (p) => p["OWN TEAM"]?.toLowerCase() === team.toLowerCase()
+    );
+
+    if (!teamPlayers.length) return;
+
     const uniquePlayers = Array.from(
       new Map(teamPlayers.map((p) => [p["PLAYER FULL NAME"], p])).values()
     ).slice(0, 6);
@@ -136,7 +160,9 @@ export default function MatchupDeepDive() {
     const both = [];
 
     const collect = (team, isHome) => {
-      const players = playerFeed.filter((p) => p["OWN TEAM"] === team);
+      const players = playerFeed.filter(
+        (p) => p["OWN TEAM"]?.toLowerCase() === team.toLowerCase()
+      );
       players.slice(0, 5).forEach((p) => {
         ["PTS", "REB", "AST", "3P"].forEach((s) => {
           const { line, confidence } = calcBet(s, p, isHome);
@@ -164,8 +190,10 @@ export default function MatchupDeepDive() {
     if (!homeTeam || !awayTeam) return [];
     const matchups = playerFeed.filter(
       (r) =>
-        (r["OWN TEAM"] === homeTeam && r["OPPONENT TEAM"] === awayTeam) ||
-        (r["OWN TEAM"] === awayTeam && r["OPPONENT TEAM"] === homeTeam)
+        (r["OWN TEAM"]?.toLowerCase() === homeTeam.toLowerCase() &&
+          r["OPPONENT TEAM"]?.toLowerCase() === awayTeam.toLowerCase()) ||
+        (r["OWN TEAM"]?.toLowerCase() === awayTeam.toLowerCase() &&
+          r["OPPONENT TEAM"]?.toLowerCase() === homeTeam.toLowerCase())
     );
 
     const grouped = {};
@@ -192,8 +220,7 @@ export default function MatchupDeepDive() {
   // =====================================================
   // 5️⃣ Render
   // =====================================================
-  if (error)
-    return <div style={{ color: "red", padding: 20 }}>{error}</div>;
+  if (error) return <div style={{ color: "red", padding: 20 }}>{error}</div>;
 
   return (
     <>
@@ -207,7 +234,9 @@ export default function MatchupDeepDive() {
           >
             <option value="">Select Team</option>
             {teams.map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {t}
+              </option>
             ))}
           </select>
           {panel(awayTeam, false)}
@@ -222,7 +251,9 @@ export default function MatchupDeepDive() {
           >
             <option value="">Select Team</option>
             {teams.map((t) => (
-              <option key={t}>{t}</option>
+              <option key={t} value={t}>
+                {t}
+              </option>
             ))}
           </select>
           {panel(homeTeam, true)}
@@ -282,7 +313,11 @@ export default function MatchupDeepDive() {
                 }`}
                 onClick={() => setSelectedGameIndex(i)}
               >
-                {new Date(g.date).toLocaleDateString()}
+                {new Date(g.date).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                })}
               </button>
             ))}
           </div>
