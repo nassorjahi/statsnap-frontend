@@ -80,39 +80,48 @@ export default function TodayMatchups_v2() {
         localStorage.getItem("tm_beginner") === "1") ||
       false
   );
+// ---------- Fetch live data
+useEffect(() => {
+  let mounted = true;
 
-  // ---------- Fetch live data
-  useEffect(() => {
-    let mounted = true;
+  const load = async () => {
+    try {
+      const [playerRes, gamesRes, teamsRes] = await Promise.all([
+        axios.get(`${API_URL}/ab/player-feed`),
+        axios.get(`${API_URL}/ab/games/today`),
+        axios.get(`${API_URL}/ab/teams`),
+      ]);
 
-    const load = async () => {
-      try {
-        const [playerRes, teamRes] = await Promise.all([
-          axios.get(`${API_URL}/ab/player-feed`),
-          axios.get(`${API_URL}/ab/games/today`),
-        ]);
+      if (!mounted) return;
 
-        if (!mounted) return;
+      const playerData =
+        playerRes.data?.data || playerRes.data?.response || [];
+      const gameData =
+        gamesRes.data?.data || gamesRes.data?.response || [];
+      const teamData =
+        teamsRes.data?.data || teamsRes.data?.response || [];
 
-        const playerData =
-          playerRes.data?.data || playerRes.data?.response || [];
-        const teamData = teamRes.data?.data || teamRes.data?.response || [];
+      // ✅ Assign live data correctly
+      setPlayerFeed(playerData);
+      setGames(gameData);
+      setTeams(
+        teamData
+          .map((t) => t.Team)
+          .filter(Boolean)
+          .sort((a, b) => a.localeCompare(b))
+      );
+    } catch (err) {
+      console.error("❌ Error fetching live data:", err);
+      setError("Failed to load live NBA data.");
+    }
+  };
 
-        setPlayerRows(playerData);
-        setTeamRows(teamData);
+  load();
+  return () => {
+    mounted = false;
+  };
+}, []);
 
-        console.log("✅ Player feed loaded:", playerData.length);
-        console.log("✅ Today’s games loaded:", teamData.length);
-      } catch (err) {
-        console.error("❌ Error loading TodayMatchups data:", err.message);
-      }
-    };
-
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   // ---------- Infer today’s matchups
   const inferredMatchups = useMemo(() => {
