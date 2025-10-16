@@ -93,6 +93,10 @@ useEffect(() => {
       ]);
 
       if (!mounted) return;
+const liveTeams =
+  teamsRes.data?.data?.map((t) => t.name || t.Team) ||
+  teamsRes.data?.response?.map((t) => t.name || t.Team) ||
+  [];
 
       const playerData =
         playerRes.data?.data || playerRes.data?.response || [];

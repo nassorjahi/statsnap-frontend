@@ -76,14 +76,28 @@ export default function MatchupDeepDive() {
       });
   }, []);
 
-  const teams = useMemo(() => {
-    const set = new Set(
-      playerFeed
-        .map((r) => r["OWN TEAM"])
-        .filter(Boolean)
-    );
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [playerFeed]);
+const [teams, setTeams] = useState([]);
+const liveTeams =
+  teamsRes.data?.data?.map((t) => t.name || t.Team) ||
+  teamsRes.data?.response?.map((t) => t.name || t.Team) ||
+  [];
+
+useEffect(() => {
+  const loadTeams = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/ab/teams`);
+      const teamNames =
+        res.data?.data?.map((t) => t.Team) ||
+        res.data?.response?.map((t) => t.Team) ||
+        [];
+      setTeams(teamNames.sort((a, b) => a.localeCompare(b)));
+    } catch (err) {
+      console.error("Error loading teams:", err.message);
+    }
+  };
+  loadTeams();
+}, []);
+
 
   // =====================================================
   // 2️⃣ Generate team/player panels
