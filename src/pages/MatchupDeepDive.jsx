@@ -1,10 +1,10 @@
 // ==========================================================
 // 🏀 MATCHUP DEEP DIVE — UNIVERSAL LIVE API EDITION
 // ----------------------------------------------------------
-// ✅ Loads all NBA teams dynamically from /api/ab/teams
-// ✅ Works with any live API data (no hardcoding)
+// ✅ Dynamically loads all NBA teams from /api/ab/teams
+// ✅ Fallbacks to player feed if /teams is empty
 // ✅ Auto-generates Smart Bets + Head-to-Head
-// ✅ Uses /api/ab/player-feed, /api/ab/games/today, /api/ab/teams
+// ✅ Fully integrated with live backend APIs
 // ==========================================================
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
@@ -23,11 +23,10 @@ export default function MatchupDeepDive() {
   const [selectedHomePlayers, setSelectedHomePlayers] = useState([]);
   const [selectedAwayPlayers, setSelectedAwayPlayers] = useState([]);
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [viewRoster, setViewRoster] = useState("both");
   const [error, setError] = useState("");
 
   // =====================================================
-  // Helper Functions (Wrapped in useCallback for Stability)
+  // 📊 Helper Functions
   // =====================================================
   const calcBet = (stat, p, isHome) => {
     const avg = Number(p[stat]) || 0;
@@ -39,43 +38,36 @@ export default function MatchupDeepDive() {
 
   const color = (c) => (c >= 90 ? "high" : c >= 80 ? "medium" : "low");
 
-  // CRITICAL: wrap in useCallback to stabilize the function definition
-  // and prevent infinite loops when used as a dependency.
-  const handleTeamSelect = useCallback((team, isHome) => {
-    if (!team) return;
+  const handleTeamSelect = useCallback(
+    (team, isHome) => {
+      if (!team) return;
+      const teamPlayers = playerFeed.filter(
+        (p) => p["OWN TEAM"]?.toLowerCase() === team.toLowerCase()
+      );
+      if (!teamPlayers.length) return;
 
-    // Filter playerFeed to find players for the selected team
-    const teamPlayers = playerFeed.filter(
-      (p) => p["OWN TEAM"]?.toLowerCase() === team.toLowerCase()
-    );
+      const uniquePlayers = Array.from(
+        new Map(teamPlayers.map((p) => [p["PLAYER FULL NAME"], p])).values()
+      ).slice(0, 6);
 
-    if (!teamPlayers.length) {
-        // console.log(`No players found for team: ${team}`);
-        return;
-    }
+      const picks = uniquePlayers.map((p) => {
+        const { line, confidence } = calcBet("PTS", p, isHome);
+        return { ...p, stat: "PTS", line, confidence };
+      });
 
-    // Deduplicate players and slice to 6
-    const uniquePlayers = Array.from(
-      new Map(teamPlayers.map((p) => [p["PLAYER FULL NAME"], p])).values()
-    ).slice(0, 6);
-
-    // Calculate picks/bets
-    const picks = uniquePlayers.map((p) => {
-      const { line, confidence } = calcBet("PTS", p, isHome);
-      return { ...p, stat: "PTS", line, confidence };
-    });
-
-    if (isHome) {
-      setHomeTeam(team);
-      setSelectedHomePlayers(picks);
-    } else {
-      setAwayTeam(team);
-      setSelectedAwayPlayers(picks);
-    }
-  }, [playerFeed]); // playerFeed is a required dependency
+      if (isHome) {
+        setHomeTeam(team);
+        setSelectedHomePlayers(picks);
+      } else {
+        setAwayTeam(team);
+        setSelectedAwayPlayers(picks);
+      }
+    },
+    [playerFeed]
+  );
 
   // =====================================================
-  // 1️⃣ Load Live Data (Teams and Player Feed)
+  // 🧠 Load Live Data (Teams + Player Feed)
   // =====================================================
   useEffect(() => {
     const loadData = async () => {
@@ -90,66 +82,51 @@ export default function MatchupDeepDive() {
         const playerData =
           playerRes.data?.response || playerRes.data?.data || [];
 
-        // Build team list from /teams API OR fallback to unique playerFeed names
+        let rawTeams = teamsRes.data?.data || teamsRes.data?.response || [];
         let teamList = [];
-        const rawTeams =
-          teamsRes.data?.data || teamsRes.data?.response || [];
 
-        // Check if API team data is a non-empty array
         if (Array.isArray(rawTeams) && rawTeams.length > 0) {
-          // You must map to a consistent team name field across all API responses
           teamList = rawTeams
             .map((t) => t.Team || t.team_name || t.name)
             .filter(Boolean);
         }
 
-        // fallback from player feed
         if (!teamList.length && playerData.length > 0) {
-          teamList = playerData
-            .map((p) => p["OWN TEAM"])
-            .filter(Boolean)
-            .filter((v, i, a) => a.indexOf(v) === i);
+          teamList = [
+            ...new Set(playerData.map((p) => p["OWN TEAM"]).filter(Boolean)),
+          ];
         }
-
-        const sortedTeamList = teamList.sort((a, b) => a.localeCompare(b));
 
         setGames(gamesData);
         setPlayerFeed(playerData);
-        setTeams(sortedTeamList); // This must contain all teams for the dropdowns
+        setTeams(teamList.sort((a, b) => a.localeCompare(b)));
       } catch (err) {
         console.error("❌ Error loading live data:", err);
         setError("Failed to load live NBA data.");
       }
     };
     loadData();
-  }, []); // Empty dependency array: runs only once on mount
+  }, []);
 
   // =====================================================
-  // 1b. Select Initial Teams (New Separate useEffect)
+  // 🏠 Auto-select first two teams on load
   // =====================================================
   useEffect(() => {
-    // This effect runs only when the 'teams' list is first populated.
-    if (teams.length >= 2 && !awayTeam) {
-      const initialAwayTeam = teams[0];
-      const initialHomeTeam = teams[1];
-
-      setAwayTeam(initialAwayTeam);
-      setHomeTeam(initialHomeTeam);
-
-      // Now call handleTeamSelect, which is defined above and uses the full playerFeed state
-      // We wrap the calls in a setTimeout of 0 to ensure playerFeed has been fully updated
-      // in the React state queue, though this isn't strictly necessary with the useCallback fix.
-      handleTeamSelect(initialAwayTeam, false);
-      handleTeamSelect(initialHomeTeam, true);
+    if (teams.length >= 2 && !awayTeam && !homeTeam) {
+      const [t1, t2] = teams;
+      setAwayTeam(t1);
+      setHomeTeam(t2);
+      handleTeamSelect(t1, false);
+      handleTeamSelect(t2, true);
     }
-  }, [teams, awayTeam, handleTeamSelect]); // Rerun when teams or handleTeamSelect changes
+  }, [teams, awayTeam, homeTeam, handleTeamSelect]);
 
   // =====================================================
-  // 3️⃣ Smart Bets (Unmodified)
+  // 🔥 Smart Bets
   // =====================================================
   const best = useMemo(() => {
     if (!homeTeam && !awayTeam) return [];
-    const both = [];
+    const all = [];
 
     const collect = (team, isHome) => {
       const players = playerFeed.filter(
@@ -158,7 +135,7 @@ export default function MatchupDeepDive() {
       players.slice(0, 5).forEach((p) => {
         ["PTS", "REB", "AST", "3P"].forEach((s) => {
           const { line, confidence } = calcBet(s, p, isHome);
-          both.push({
+          all.push({
             player: p["PLAYER FULL NAME"],
             team,
             stat: s,
@@ -172,11 +149,11 @@ export default function MatchupDeepDive() {
     if (homeTeam) collect(homeTeam, true);
     if (awayTeam) collect(awayTeam, false);
 
-    return both.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
+    return all.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
   }, [homeTeam, awayTeam, playerFeed]);
 
   // =====================================================
-  // 4️⃣ Head-to-Head (Unmodified)
+  // 🤜 Head-to-Head
   // =====================================================
   const headToHeadGames = useMemo(() => {
     if (!homeTeam || !awayTeam) return [];
@@ -192,12 +169,7 @@ export default function MatchupDeepDive() {
     matchups.forEach((g) => {
       const key = g["DATE"];
       if (!grouped[key])
-        grouped[key] = {
-          date: g["DATE"],
-          home: homeTeam,
-          away: awayTeam,
-          roster: [],
-        };
+        grouped[key] = { date: g["DATE"], home: homeTeam, away: awayTeam, roster: [] };
       grouped[key].roster.push(g);
     });
 
@@ -210,20 +182,17 @@ export default function MatchupDeepDive() {
   const rosterToShow = selectedGame?.roster?.slice(0, 10) || [];
 
   const panel = (team, isHome) => {
-    const selectedPlayers = isHome ? selectedHomePlayers : selectedAwayPlayers;
-    if (!team || !selectedPlayers.length) return null;
+    const players = isHome ? selectedHomePlayers : selectedAwayPlayers;
+    if (!team || !players.length) return null;
 
     return (
       <>
         <div className="team-stats">
           <h4>{isHome ? "Home" : "Away"} Team</h4>
-          <p>
-            <strong>Players:</strong> {selectedPlayers.length}
-          </p>
+          <p><strong>Players:</strong> {players.length}</p>
         </div>
-
         <div className="player-preview">
-          {selectedPlayers.map((p, i) => (
+          {players.map((p, i) => (
             <div key={i} className={`player-card ${color(p.confidence)}`}>
               <img
                 src={fetchEspnHeadshotUrl(p["PLAYER FULL NAME"])}
@@ -231,9 +200,7 @@ export default function MatchupDeepDive() {
                 onError={(e) => (e.currentTarget.style.visibility = "hidden")}
               />
               <h5>{p["PLAYER FULL NAME"]}</h5>
-              <p>
-                <strong>{p.stat}</strong> O {p.line}
-              </p>
+              <p><strong>{p.stat}</strong> O {p.line}</p>
               <motion.div
                 className={`confidence-bar ${color(p.confidence)}`}
                 initial={{ width: "0%" }}
@@ -250,7 +217,7 @@ export default function MatchupDeepDive() {
   };
 
   // =====================================================
-  // 5️⃣ Render
+  // 🖥️ Render
   // =====================================================
   if (error) return <div style={{ color: "red", padding: 20 }}>{error}</div>;
 
@@ -260,15 +227,10 @@ export default function MatchupDeepDive() {
         {/* Away Team */}
         <div className="panel left-panel">
           <h2>🚗 Away Team</h2>
-          <select
-            value={awayTeam}
-            onChange={(e) => handleTeamSelect(e.target.value, false)}
-          >
+          <select value={awayTeam} onChange={(e) => handleTeamSelect(e.target.value, false)}>
             <option value="">Select Team</option>
             {teams.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
           {panel(awayTeam, false)}
@@ -277,15 +239,10 @@ export default function MatchupDeepDive() {
         {/* Home Team */}
         <div className="panel right-panel">
           <h2>🏠 Home Team</h2>
-          <select
-            value={homeTeam}
-            onChange={(e) => handleTeamSelect(e.target.value, true)}
-          >
+          <select value={homeTeam} onChange={(e) => handleTeamSelect(e.target.value, true)}>
             <option value="">Select Team</option>
             {teams.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
           {panel(homeTeam, true)}
@@ -299,13 +256,7 @@ export default function MatchupDeepDive() {
           ) : (
             <table className="smart-bet-table">
               <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Team</th>
-                  <th>Stat</th>
-                  <th>Line</th>
-                  <th>Conf.</th>
-                </tr>
+                <tr><th>Player</th><th>Team</th><th>Stat</th><th>Line</th><th>Conf.</th></tr>
               </thead>
               <tbody>
                 {best.map((b, i) => (
@@ -332,7 +283,7 @@ export default function MatchupDeepDive() {
         </div>
       </div>
 
-      {/* Head-to-Head Section */}
+      {/* Head-to-Head */}
       {homeTeam && awayTeam && selectedGame && (
         <div className="headtohead-panel fullwidth">
           <h2>🏀 Head-to-Head Matchups (Last 5)</h2>
@@ -340,15 +291,11 @@ export default function MatchupDeepDive() {
             {headToHeadGames.map((g, i) => (
               <button
                 key={i}
-                className={`matchup-btn ${
-                  selectedGameIndex === i ? "active" : ""
-                }`}
+                className={`matchup-btn ${selectedGameIndex === i ? "active" : ""}`}
                 onClick={() => setSelectedGameIndex(i)}
               >
                 {new Date(g.date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
+                  month: "short", day: "numeric", year: "numeric",
                 })}
               </button>
             ))}
@@ -356,7 +303,7 @@ export default function MatchupDeepDive() {
 
           <AnimatePresence mode="wait">
             <motion.div
-              key={`${selectedGameIndex}-${viewRoster}`}
+              key={`${selectedGameIndex}`}
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
@@ -364,19 +311,11 @@ export default function MatchupDeepDive() {
               className="boxscore-table-container"
             >
               <h4>
-                {awayTeam} @ {homeTeam} —{" "}
-                {new Date(selectedGame.date).toLocaleDateString()}
+                {awayTeam} @ {homeTeam} — {new Date(selectedGame.date).toLocaleDateString()}
               </h4>
               <table className="smart-bet-table">
                 <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>PTS</th>
-                    <th>REB</th>
-                    <th>AST</th>
-                    <th>STL</th>
-                    <th>BLK</th>
-                  </tr>
+                  <tr><th>Player</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th></tr>
                 </thead>
                 <tbody>
                   {rosterToShow.map((s, i) => (
