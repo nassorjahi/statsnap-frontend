@@ -1,0 +1,5 @@
+"scripts": {
+  "dev": "vite",
+  "build": "vite build && copy static.json dist\\",
+  "preview": "vite preview"
+}
