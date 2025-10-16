@@ -1,8 +1,18 @@
+// ==========================================================
+// 🚑 INJURY REPORT — Live API Edition
+// ----------------------------------------------------------
+// ✅ Fetches from /api/ab/injuries + /api/ab/health
+// ✅ Auto-refresh every 6 hrs + manual refresh button
+// ✅ Filters by selected matchup (home + away)
+// ✅ Toast notifications + clean responsive layout
+// ==========================================================
+
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { ToastContainer, toast, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import "./InjuryReport.css";
+import "../styles/InjuryReport.css";
+import { API_URL } from "../data/teamData";
 
 export default function InjuryReport({ homeTeam, awayTeam }) {
   const [injuries, setInjuries] = useState([]);
@@ -10,46 +20,12 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  // ✅ Fetch cached injuries
-  const fetchInjuries = async (showToast = false) => {
-    try {
-      const res = await axios.get("http://localhost:5050/api/injuries");
-      setInjuries(res.data || []);
-      setLastUpdated(new Date().toLocaleTimeString());
-      if (showToast) customToast("Injury data refreshed successfully ✅", "success");
-    } catch (err) {
-      console.error("❌ Injury fetch failed:", err.message);
-      customToast("Failed to load injury data ⚠️", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ Manual refresh (live scrape)
-  const handleManualRefresh = async () => {
-    try {
-      setRefreshing(true);
-      const res = await axios.get("http://localhost:5050/api/injuries/refresh");
-      setInjuries(res.data.data || []);
-      setLastUpdated(new Date().toLocaleTimeString());
-      customToast("Injury report updated successfully ✅", "success");
-    } catch (err) {
-      console.error("Manual refresh failed:", err.message);
-      customToast("Error refreshing injury data ⚠️", "error");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  // ✅ Toast wrapper (custom theme)
+  // 🧩 Toast helper
   const customToast = (message, type) => {
     toast[type](message, {
       position: "bottom-right",
       autoClose: 2500,
       hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
       theme: "colored",
       transition: Slide,
       style: {
@@ -61,21 +37,70 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
     });
   };
 
-  // ✅ Load on mount + refresh every 6 hrs
+  // 🧠 Fetch cached injuries
+  const fetchInjuries = async (showToast = false) => {
+    try {
+      const res = await axios.get(`${API_URL}/ab/injuries`, {
+        withCredentials: false,
+      });
+      const data = res.data?.data || res.data?.response || res.data || [];
+      setInjuries(data);
+      setLastUpdated(new Date().toLocaleTimeString());
+      if (showToast) customToast("Injury data refreshed ✅", "success");
+    } catch (err) {
+      console.error("❌ Injury fetch failed:", err.message);
+      await pingHealth();
+      customToast("Failed to load injury data ⚠️", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🧩 Manual refresh (forces re-scrape)
+  const handleManualRefresh = async () => {
+    try {
+      setRefreshing(true);
+      const res = await axios.get(`${API_URL}/ab/injuries/refresh`, {
+        withCredentials: false,
+      });
+      const data = res.data?.data || res.data?.response || [];
+      setInjuries(data);
+      setLastUpdated(new Date().toLocaleTimeString());
+      customToast("Injury report updated successfully ✅", "success");
+    } catch (err) {
+      console.error("Manual refresh failed:", err.message);
+      await pingHealth();
+      customToast("Error refreshing injury data ⚠️", "error");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // 🩺 Backend health check fallback
+  const pingHealth = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/ab/health`);
+      console.log("Health:", res.data?.status || res.status);
+    } catch {
+      console.warn("Backend health check failed");
+    }
+  };
+
+  // 🔄 Auto-refresh every 6 hours
   useEffect(() => {
     fetchInjuries();
     const interval = setInterval(() => fetchInjuries(true), 1000 * 60 * 60 * 6);
     return () => clearInterval(interval);
   }, []);
 
-  // ✅ Filter matchup
+  // 🎯 Filter by matchup
   const relevant = injuries.filter(
     (i) =>
       i.team?.toLowerCase().includes(homeTeam?.toLowerCase()) ||
       i.team?.toLowerCase().includes(awayTeam?.toLowerCase())
   );
 
-  // ✅ Badge color
+  // 🩹 Badge color by status
   const badgeColor = (status = "") => {
     const s = status.toLowerCase();
     if (s.includes("out") || s.includes("inactive")) return "#dc2626";
@@ -84,6 +109,7 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
     return "#6b7280";
   };
 
+  // ⏳ Loading
   if (loading)
     return (
       <div className="injury-report">
@@ -92,7 +118,7 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
       </div>
     );
 
-  // ✅ Empty Matchup State
+  // 🧘 No injuries found
   if (!relevant.length)
     return (
       <div className="injury-report">
@@ -115,15 +141,13 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
             )}
           </button>
         </div>
-        <div className="injury-sub">
-          Last updated: {lastUpdated || "—"}
-        </div>
+        <div className="injury-sub">Last updated: {lastUpdated || "—"}</div>
         <p>No reported injuries for this matchup.</p>
         <ToastContainer />
       </div>
     );
 
-  // ✅ Render injuries grid
+  // ✅ Render injuries
   return (
     <div className="injury-report">
       <div className="injury-header">
@@ -145,7 +169,9 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
           )}
         </button>
       </div>
+
       <div className="injury-sub">Last updated: {lastUpdated || "—"}</div>
+
       <div className="injury-grid">
         {relevant.map((r, i) => (
           <div key={i} className="injury-card">
@@ -162,6 +188,7 @@ export default function InjuryReport({ homeTeam, awayTeam }) {
           </div>
         ))}
       </div>
+
       <ToastContainer />
     </div>
   );

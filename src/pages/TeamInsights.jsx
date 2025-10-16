@@ -1,5 +1,14 @@
+// ==========================================================
+// 🏀 TEAM INSIGHTS DASHBOARD — Live API Edition
+// ----------------------------------------------------------
+// ✅ Pulls data from /api/ab/player-feed + /api/ab/teams
+// ✅ Displays team-level and player-level insights
+// ✅ Preserves all original table/chart logic and visuals
+// ==========================================================
+
 import React, { useState, useEffect, useMemo } from "react";
 import axios from "axios";
+import { API_URL } from "../data/teamData";
 import {
   LineChart,
   Line,
@@ -11,43 +20,47 @@ import {
   Legend,
 } from "recharts";
 
+// ----------------------------------------------------------
+// Component
+// ----------------------------------------------------------
 export default function TeamInsights() {
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState([]); // Player stats
+  const [teamRows, setTeamRows] = useState([]); // Team stats
   const [selectedTeam, setSelectedTeam] = useState("");
   const [error, setError] = useState("");
 
   // 🏀 ESPN logo map
   const teamLogoMap = {
-    "Hawks": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
-    "Celtics": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
-    "Nets": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
-    "Hornets": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
-    "Bulls": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
-    "Cavaliers": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
-    "Mavericks": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
-    "Nuggets": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
-    "Pistons": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
-    "Warriors": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
-    "Rockets": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
-    "Pacers": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
-    "Clippers": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
-    "Lakers": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
-    "Grizzlies": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
-    "Heat": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
-    "Bucks": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
-    "Timberwolves": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
-    "Pelicans": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
-    "Knicks": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
-    "Thunder": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
-    "Magic": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+    Hawks: "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+    Celtics: "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+    Nets: "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+    Hornets: "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+    Bulls: "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+    Cavaliers: "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+    Mavericks: "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+    Nuggets: "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+    Pistons: "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+    Warriors: "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+    Rockets: "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+    Pacers: "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+    Clippers: "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+    Lakers: "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+    Grizzlies: "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+    Heat: "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+    Bucks: "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+    Timberwolves: "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+    Pelicans: "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+    Knicks: "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+    Thunder: "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+    Magic: "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
     "76ers": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
-    "Suns": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+    Suns: "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
     "Trail Blazers": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
-    "Kings": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
-    "Spurs": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",
-    "Raptors": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
-    "Jazz": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
-    "Wizards": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
+    Kings: "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+    Spurs: "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",
+    Raptors: "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+    Jazz: "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
+    Wizards: "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
   };
 
   const statKeys = {
@@ -59,27 +72,52 @@ export default function TeamInsights() {
     Steals: "ST",
   };
 
-  // 📊 Fetch player stats
+  // ----------------------------------------------------------
+  // Fetch data from API
+  // ----------------------------------------------------------
   useEffect(() => {
-    axios
-      .get("http://localhost:5000/api/player-stats")
-      .then((res) => setRows(res.data || []))
-      .catch((err) => setError(err.message));
+    const loadData = async () => {
+      try {
+        const [playerFeed, teamFeed] = await Promise.all([
+          axios.get(`${API_URL}/ab/player-feed`),
+          axios.get(`${API_URL}/ab/teams`),
+        ]);
+
+        setRows(playerFeed.data?.data || playerFeed.data?.response || []);
+        setTeamRows(teamFeed.data?.data || teamFeed.data?.response || []);
+      } catch (err) {
+        console.error("❌ Error loading team insights data:", err.message);
+        setError("Failed to load data.");
+      }
+    };
+    loadData();
   }, []);
 
-  const teams = useMemo(
-    () => [...new Set(rows.map((r) => r["OWN TEAM"]))].sort(),
-    [rows]
-  );
+  // ----------------------------------------------------------
+  // Team dropdown options
+  // ----------------------------------------------------------
+  const teams = useMemo(() => {
+    const allTeams = [
+      ...new Set(
+        rows.map((r) => r["OWN TEAM"]).filter(Boolean)
+      ),
+    ];
+    return allTeams.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  }, [rows]);
 
-  const teamRows = useMemo(() => {
+  // ----------------------------------------------------------
+  // Filter rows for selected team
+  // ----------------------------------------------------------
+  const teamPlayerRows = useMemo(() => {
     if (!selectedTeam) return [];
     return rows.filter((r) => r["OWN TEAM"] === selectedTeam);
   }, [rows, selectedTeam]);
 
-  // 🧮 Build Top 6 Tables
+  // ----------------------------------------------------------
+  // Build top 6 tables (points, rebounds, etc.)
+  // ----------------------------------------------------------
   const buildTable = (label, key) => {
-    const players = teamRows.reduce((acc, r) => {
+    const players = teamPlayerRows.reduce((acc, r) => {
       const name = r["PLAYER FULL NAME"];
       if (!acc[name]) acc[name] = { home: [], away: [] };
       if (r["VENUE (R/H/N)"] === "H") acc[name].home.push(Number(r[key] || 0));
@@ -88,15 +126,12 @@ export default function TeamInsights() {
     }, {});
 
     const averages = Object.entries(players).map(([name, data]) => {
-      const homeAvg =
-        data.home.length > 0
-          ? (data.home.reduce((a, b) => a + b, 0) / data.home.length).toFixed(1)
-          : "0.0";
-      const awayAvg =
-        data.away.length > 0
-          ? (data.away.reduce((a, b) => a + b, 0) / data.away.length).toFixed(1)
-          : "0.0";
-      return { name, homeAvg, awayAvg };
+      const avg = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0);
+      return {
+        name,
+        homeAvg: avg(data.home).toFixed(1),
+        awayAvg: avg(data.away).toFixed(1),
+      };
     });
 
     const top6 = averages
@@ -162,33 +197,31 @@ export default function TeamInsights() {
     );
   };
 
-  // 📈 Last 10 Games with Opponent Logos + W/L
+  // ----------------------------------------------------------
+  // Build last 10 games overview
+  // ----------------------------------------------------------
   const last10 = useMemo(() => {
-    if (!selectedTeam) return [];
+    if (!selectedTeam || !teamRows?.length) return [];
 
-    const teamGames = rows.filter(
-      (r) => r["OWN TEAM"] === selectedTeam || r["OPPONENT TEAM"] === selectedTeam
+    const games = teamRows.filter(
+      (g) =>
+        g.TEAM === selectedTeam ||
+        g.HOME_TEAM === selectedTeam ||
+        g.AWAY_TEAM === selectedTeam
     );
 
     const grouped = {};
-
-    teamGames.forEach((r) => {
-      const gameId = r["GAME-ID"];
-      const isTeam = r["OWN TEAM"] === selectedTeam;
-
-      if (!grouped[gameId]) {
-        grouped[gameId] = {
-          date: r["DATE"],
-          opponent: isTeam ? r["OPPONENT TEAM"] : r["OWN TEAM"],
-          venue: isTeam ? r["VENUE (R/H/N)"] : null,
-          teamPts: 0,
-          oppPts: 0,
-        };
-      }
-
-      if (isTeam) grouped[gameId].teamPts += Number(r["PTS"] || 0);
-      else grouped[gameId].oppPts += Number(r["PTS"] || 0);
-    });
+    for (const g of games) {
+      const key = g.GAME_ID || `${g.HOME_TEAM}-${g.AWAY_TEAM}-${g.DATE}`;
+      const isHome = g.HOME_TEAM === selectedTeam;
+      grouped[key] = {
+        date: g.GAME_DATE || g.DATE,
+        opponent: isHome ? g.AWAY_TEAM : g.HOME_TEAM,
+        venue: isHome ? "H" : "R",
+        teamPts: Number(isHome ? g.PTS_FOR ?? g.PTS : g.PTS_AGAINST ?? g.OPP_PTS),
+        oppPts: Number(isHome ? g.PTS_AGAINST ?? g.OPP_PTS : g.PTS_FOR ?? g.PTS),
+      };
+    }
 
     const result = Object.values(grouped)
       .map((g) => ({
@@ -200,8 +233,11 @@ export default function TeamInsights() {
       .slice(-10);
 
     return result;
-  }, [rows, selectedTeam]);
+  }, [selectedTeam, teamRows]);
 
+  // ----------------------------------------------------------
+  // Render
+  // ----------------------------------------------------------
   return (
     <div style={{ padding: 20, maxWidth: 1250, margin: "auto" }}>
       <h2 style={{ fontSize: "1.8rem", fontWeight: 800, marginBottom: 20 }}>
@@ -227,21 +263,23 @@ export default function TeamInsights() {
         </select>
       </div>
 
+      {error && <div style={{ color: "red" }}>{error}</div>}
+
       {selectedTeam ? (
         <>
           {/* Player Stat Tables */}
-          <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
             {["Points", "Rebounds", "Assists"].map((label) =>
               buildTable(label, statKeys[label])
             )}
           </div>
-          <div style={{ display: "flex", gap: 16, marginBottom: 40 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 40 }}>
             {["3 Pointers", "Blocks", "Steals"].map((label) =>
               buildTable(label, statKeys[label])
             )}
           </div>
 
-          {/* Last 10 Games with Logos */}
+          {/* Last 10 Games */}
           <div
             style={{
               marginTop: 40,
@@ -264,16 +302,13 @@ export default function TeamInsights() {
               <thead>
                 <tr style={{ background: "#f3f4f6" }}>
                   <th style={{ textAlign: "left", padding: "6px 8px" }}>Date</th>
-                  <th style={{ textAlign: "left", padding: "6px 8px" }}>Opp</th>
-                  <th style={{ textAlign: "center", padding: "6px 8px" }}>
-                    Result
-                  </th>
+                  <th style={{ textAlign: "left", padding: "6px 8px" }}>Opponent</th>
+                  <th style={{ textAlign: "center", padding: "6px 8px" }}>Result</th>
                 </tr>
               </thead>
               <tbody>
                 {last10.map((g, i) => {
-                  const isHome = g.venue === "H";
-                  const prefix = isHome ? "vs" : "@";
+                  const prefix = g.venue === "H" ? "vs" : "@";
                   const resultColor =
                     g.result === "W"
                       ? "#16a34a"
@@ -284,13 +319,24 @@ export default function TeamInsights() {
                   return (
                     <tr key={i}>
                       <td style={{ padding: "6px 8px" }}>{g.date}</td>
-                      <td style={{ padding: "6px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+                      <td
+                        style={{
+                          padding: "6px 8px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
                         {prefix}{" "}
                         {g.logo && (
                           <img
                             src={g.logo}
                             alt={g.opponent}
-                            style={{ width: 20, height: 20, borderRadius: "50%" }}
+                            style={{
+                              width: 20,
+                              height: 20,
+                              borderRadius: "50%",
+                            }}
                           />
                         )}
                         <span>{g.opponent}</span>

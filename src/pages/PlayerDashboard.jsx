@@ -1,8 +1,15 @@
-// ✅ PLAYER DASHBOARD — WITH TREND CHART, VS OPPONENT, TEAM SUMMARY (LIGHT THEME)
-// ----------------------------------------------------------------------------------
+// ==========================================================
+// 🏀 PLAYER DASHBOARD — LIVE DATA + OPTIMIZED VERSION
+// ----------------------------------------------------------
+// ✅ Pulls data from /api/ab/player-feed (StatSnap backend)
+// ✅ Preprocesses rosters, opponents, and players on idle time
+// ✅ Caches lookups for O(1) dropdown selection
+// ✅ Fully compatible with Render + all visual features
+// ==========================================================
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
 import axios from "axios";
+import { API_URL } from "../data/teamData";
 import {
   LineChart,
   Line,
@@ -15,15 +22,20 @@ import {
 } from "recharts";
 import { fetchEspnHeadshotUrl } from "../utils/playerImageFetcher";
 
-// ---------- Helpers ----------
+// -----------------------------
+// Helpers
+// -----------------------------
 const normalize = (v) => (v == null ? "" : String(v).trim().toLowerCase());
 
-// Parse a variety of date formats safely (ISO, MM/DD/YYYY, YYYY-MM-DD, etc.)
 const parseGameDate = (raw) => {
   if (!raw) return NaN;
+  const num = Number(raw);
+  if (!isNaN(num) && num > 10000 && num < 80000) {
+    const excelEpoch = new Date(1899, 11, 30);
+    return new Date(excelEpoch.getTime() + num * 86400000);
+  }
   const d = new Date(raw);
   if (!isNaN(d)) return d;
-  // Try MM/DD/YYYY
   const m = String(raw).match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (m) {
     const [_, mm, dd, yyyy] = m;
@@ -32,116 +44,160 @@ const parseGameDate = (raw) => {
   return NaN;
 };
 
-// Deduplicate while preserving first-seen display value; sort case-insensitively
-const uniqueSortedDisplay = (values) => {
-  const seen = new Set();
-  const out = [];
-  for (const v of values) {
-    const key = normalize(v);
-    if (!key) continue;
-    if (!seen.has(key)) {
-      seen.add(key);
-      out.push(v);
-    }
-  }
-  return out.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+const formatExcelDate = (value, pretty = false) => {
+  if (!value) return "";
+  const parsedDate = parseGameDate(value);
+  if (!isNaN(parsedDate))
+    return parsedDate.toLocaleDateString("en-US", {
+      month: pretty ? "short" : "2-digit",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  return "";
 };
 
+// -----------------------------
+// Component
+// -----------------------------
 export default function PlayerDashboard() {
   const [rows, setRows] = useState([]);
+  const [gamesByPlayer, setGamesByPlayer] = useState(new Map());
+  const [rostersByTeam, setRostersByTeam] = useState({});
+  const [opponents, setOpponents] = useState([]);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState("");
   const [playerPhotoUrl, setPlayerPhotoUrl] = useState(null);
   const [error, setError] = useState("");
-  const [showTeamSummary, setShowTeamSummary] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const TEAM_NAME_MAP = {
+    "76ers": "Philadelphia 76ers", Bucks: "Milwaukee Bucks", Bulls: "Chicago Bulls",
+    Cavaliers: "Cleveland Cavaliers", Celtics: "Boston Celtics", Clippers: "LA Clippers",
+    Grizzlies: "Memphis Grizzlies", Hawks: "Atlanta Hawks", Heat: "Miami Heat",
+    Hornets: "Charlotte Hornets", Jazz: "Utah Jazz", Kings: "Sacramento Kings",
+    Knicks: "New York Knicks", Lakers: "Los Angeles Lakers", Magic: "Orlando Magic",
+    Mavericks: "Dallas Mavericks", Nets: "Brooklyn Nets", Nuggets: "Denver Nuggets",
+    Pacers: "Indiana Pacers", Pelicans: "New Orleans Pelicans", Pistons: "Detroit Pistons",
+    Raptors: "Toronto Raptors", Rockets: "Houston Rockets", Spurs: "San Antonio Spurs",
+    Suns: "Phoenix Suns", Thunder: "Oklahoma City Thunder", Timberwolves: "Minnesota Timberwolves",
+    "Trail Blazers": "Portland Trail Blazers", Warriors: "Golden State Warriors", Wizards: "Washington Wizards",
+  };
+  const NBA_TEAMS = new Set(Object.values(TEAM_NAME_MAP));
+  const TEAM_SHORT_TO_FULL = TEAM_NAME_MAP;
+  const TEAM_FULL_TO_SHORT = Object.fromEntries(
+    Object.entries(TEAM_NAME_MAP).map(([s, f]) => [f, s])
+  );
 
   const STAT_KEYS = ["PTS", "REB", "AST", "3PM", "STL", "BLK"];
-  const columnMap = {
-    PTS: "PTS",
-    REB: "TOT",
-    AST: "A",
-    "3PM": "3P",
-    STL: "ST",
-    BLK: "BL",
-  };
+  const columnMap = { PTS: "PTS", REB: "TOT", AST: "A", "3PM": "3P", STL: "ST", BLK: "BL" };
 
-  // Allow env override, fall back to localhost (keeps current behavior intact)
-  const API_BASE =
-    (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_URL) ||
-    "http://localhost:5000";
-
-  // 🧠 Fetch data
+  // --------------------------------------------------
+  // Fetch player data (LIVE)
+  // --------------------------------------------------
   useEffect(() => {
+    let mounted = true;
     axios
-      .get(`${API_BASE}/api/player-stats`)
+      .get(`${API_URL}/ab/player-feed`)
       .then((res) => {
-        const data = Array.isArray(res.data) ? res.data : [];
+        if (!mounted) return;
+        const data =
+          Array.isArray(res.data?.data) || Array.isArray(res.data?.response)
+            ? res.data.data || res.data.response
+            : [];
         setRows(data);
         console.log("✅ Player data loaded:", data.length);
       })
       .catch((err) => {
-        console.error("❌ API Error:", err);
+        console.error(err);
         setError("Could not load player data.");
       });
-  }, [API_BASE]);
+    return () => (mounted = false);
+  }, []);
 
-  // 🧩 Dropdown lists (case-insensitive, deduped)
-  const teams = useMemo(() => {
-    const vals = rows.map((r) => (r["OWN TEAM"] || "").trim()).filter(Boolean);
-    return uniqueSortedDisplay(vals);
+  // --------------------------------------------------
+  // Preprocess (on idle thread)
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!rows.length) return;
+    const processData = () => {
+      const map = new Map();
+      const rosterMap = {};
+      const opponentSet = new Set();
+      const cutoff = new Date("2024-01-01T00:00:00Z").getTime();
+
+      for (const r of rows) {
+        const playerName = r["PLAYER FULL NAME"];
+        const date = parseGameDate(r["DATE"]);
+        if (!playerName || isNaN(date) || date.getTime() < cutoff) continue;
+
+        const key = normalize(playerName);
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(r);
+
+        const fullTeam = TEAM_SHORT_TO_FULL[r["OWN TEAM"]] || r["OWN TEAM"];
+        if (NBA_TEAMS.has(fullTeam)) {
+          if (!rosterMap[fullTeam]) rosterMap[fullTeam] = new Set();
+          rosterMap[fullTeam].add(playerName);
+        }
+
+        const oppFull = TEAM_SHORT_TO_FULL[r["OPPONENT TEAM"]] || r["OPPONENT TEAM"];
+        if (NBA_TEAMS.has(oppFull)) opponentSet.add(oppFull);
+      }
+
+      for (const games of map.values()) {
+        games.sort((a, b) => parseGameDate(b["DATE"]) - parseGameDate(a["DATE"]));
+      }
+
+      const finalRoster = {};
+      for (const [team, set] of Object.entries(rosterMap)) {
+        finalRoster[team] = Array.from(set).sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: "base" })
+        );
+      }
+
+      setGamesByPlayer(map);
+      setRostersByTeam(finalRoster);
+      setOpponents(Array.from(opponentSet).sort((a, b) => a.localeCompare(b)));
+      console.log(`✅ Processed ${map.size} players.`);
+    };
+
+    if ("requestIdleCallback" in window)
+      requestIdleCallback(processData);
+    else setTimeout(processData, 0);
   }, [rows]);
 
-  const roster = useMemo(() => {
-    if (!selectedTeam) return [];
-    const targetTeam = normalize(selectedTeam);
-    const vals = rows
-      .filter((r) => normalize(r["OWN TEAM"]) === targetTeam)
-      .map((r) => r["PLAYER FULL NAME"])
-      .filter(Boolean);
-    return uniqueSortedDisplay(vals);
-  }, [rows, selectedTeam]);
+  // --------------------------------------------------
+  // Derived Data
+  // --------------------------------------------------
+  const roster = useMemo(() => rostersByTeam[selectedTeam] || [], [selectedTeam, rostersByTeam]);
+  const teams = useMemo(
+    () => Array.from(NBA_TEAMS).sort((a, b) => a.localeCompare(b)),
+    []
+  );
 
-  const opponents = useMemo(() => {
-    const vals = rows.map((r) => (r["OPPONENT TEAM"] || "").trim()).filter(Boolean);
-    return uniqueSortedDisplay(vals);
-  }, [rows]);
-
-  // 🧮 Player-specific rows (normalized filters + safe date sort)
   const playerRows = useMemo(() => {
     if (!selectedPlayer) return [];
-    const playerKey = normalize(selectedPlayer);
-    const oppKey =
-      selectedOpponent && selectedOpponent !== "All Opponents"
-        ? normalize(selectedOpponent)
-        : null;
+    const base = gamesByPlayer.get(normalize(selectedPlayer)) || [];
+    if (!selectedOpponent || selectedOpponent === "All Opponents") return base;
+    const short = TEAM_FULL_TO_SHORT[selectedOpponent] || selectedOpponent;
+    return base.filter((g) => normalize(g["OPPONENT TEAM"]) === normalize(short));
+  }, [selectedPlayer, selectedOpponent, gamesByPlayer, TEAM_FULL_TO_SHORT]);
 
-    let filtered = rows.filter((r) => normalize(r["PLAYER FULL NAME"]) === playerKey);
-    if (oppKey) {
-      filtered = filtered.filter((r) => normalize(r["OPPONENT TEAM"]) === oppKey);
-    }
-
-    return filtered.sort((a, b) => {
-      const dA = parseGameDate(a["DATE"]);
-      const dB = parseGameDate(b["DATE"]);
-      if (isNaN(dA) && isNaN(dB)) return 0;
-      if (isNaN(dA)) return 1;
-      if (isNaN(dB)) return -1;
-      return dB - dA; // newest → oldest
-    });
-  }, [rows, selectedPlayer, selectedOpponent]);
-
-  // 🧮 Averages
+  // --------------------------------------------------
+  // Aggregates
+  // --------------------------------------------------
   const averageFor = (n) => {
     if (!playerRows.length) return {};
-    const games = playerRows.slice(0, Math.max(1, Math.min(n, playerRows.length)));
+    const games = playerRows.slice(0, n);
     const out = {};
-    STAT_KEYS.forEach((key) => {
-      const col = columnMap[key];
-      const avg =
-        games.reduce((sum, g) => sum + (Number(g?.[col]) || 0), 0) / games.length;
-      out[key] = avg.toFixed(1);
-    });
+    for (const k of STAT_KEYS) {
+      const col = columnMap[k];
+      out[k] = (
+        games.reduce((s, g) => s + (Number(g[col]) || 0), 0) / games.length
+      ).toFixed(1);
+    }
     return out;
   };
 
@@ -150,99 +206,65 @@ export default function PlayerDashboard() {
   const last3 = averageFor(3);
   const last1 = averageFor(1);
 
-  // 🧠 Weighted projection (most recent games weighted higher)
   const nextGameProjection = useMemo(() => {
-    if (playerRows.length === 0) return {};
+    if (!playerRows.length) return {};
     const games = playerRows.slice(0, 10);
     const weights = [0.25, 0.2, 0.15, 0.12, 0.1, 0.08, 0.05, 0.03, 0.015, 0.015];
     const out = {};
-    STAT_KEYS.forEach((key) => {
-      const col = columnMap[key];
-      let ws = 0,
-        wt = 0;
+    for (const k of STAT_KEYS) {
+      const col = columnMap[k];
+      let sum = 0,
+        wsum = 0;
       games.forEach((g, i) => {
-        const v = Number(g?.[col]) || 0;
+        const v = Number(g[col]) || 0;
         const w = weights[i] || 0.015;
-        ws += v * w;
-        wt += w;
+        sum += v * w;
+        wsum += w;
       });
-      out[key] = wt ? (ws / wt).toFixed(1) : "0.0";
-    });
+      out[k] = (sum / wsum).toFixed(1);
+    }
     return out;
   }, [playerRows]);
 
-  // 🧩 Vs Opponent Stats (normalized)
   const opponentAvg = useMemo(() => {
-    if (!selectedOpponent || selectedOpponent === "All Opponents" || !selectedPlayer)
-      return null;
-
-    const playerKey = normalize(selectedPlayer);
-    const oppKey = normalize(selectedOpponent);
-    const games = rows.filter(
-      (r) => normalize(r["PLAYER FULL NAME"]) === playerKey && normalize(r["OPPONENT TEAM"]) === oppKey
-    );
-    if (!games.length) return null;
-
+    if (!selectedOpponent || selectedOpponent === "All Opponents") return null;
+    if (!playerRows.length) return null;
     const out = {};
-    STAT_KEYS.forEach((key) => {
-      const col = columnMap[key];
-      const avg =
-        games.reduce((sum, g) => sum + (Number(g?.[col]) || 0), 0) / games.length;
-      out[key] = avg.toFixed(1);
-    });
-    return out;
-  }, [rows, selectedPlayer, selectedOpponent]);
-
-  // ⚡ Team Summary — Top 5 by Points (normalized team match)
-  const teamSummary = useMemo(() => {
-    if (!showTeamSummary || !selectedTeam) return [];
-    const teamKey = normalize(selectedTeam);
-    const teamRows = rows.filter((r) => normalize(r["OWN TEAM"]) === teamKey);
-    const grouped = {};
-    teamRows.forEach((r) => {
-      const player = r["PLAYER FULL NAME"];
-      if (!player) return;
-      grouped[player] = grouped[player] || { PTS: 0, G: 0 };
-      grouped[player].PTS += Number(r["PTS"] || 0);
-      grouped[player].G += 1;
-    });
-    return Object.entries(grouped)
-      .map(([player, data]) => ({
-        player,
-        ppg: data.G ? (data.PTS / data.G).toFixed(1) : "0.0",
-      }))
-      .sort((a, b) => Number(b.ppg) - Number(a.ppg))
-      .slice(0, 5);
-  }, [rows, selectedTeam, showTeamSummary]);
-
-  // 🧩 Headshot fetcher (robust: find by normalized name first)
-  useEffect(() => {
-    if (!selectedPlayer) {
-      setPlayerPhotoUrl(null);
-      return;
+    for (const k of STAT_KEYS) {
+      const col = columnMap[k];
+      out[k] = (
+        playerRows.reduce((s, g) => s + (Number(g[col]) || 0), 0) /
+        playerRows.length
+      ).toFixed(1);
     }
-    const playerKey = normalize(selectedPlayer);
-    const row =
-      rows.find((r) => normalize(r["PLAYER FULL NAME"]) === playerKey) ||
-      rows.find((r) => r["PLAYER FULL NAME"] === selectedPlayer); // fallback exact
-    const id = row ? row["PLAYER-ID"] : null;
+    return out;
+  }, [playerRows, selectedOpponent]);
 
+  const latestDate = playerRows.length
+    ? formatExcelDate(playerRows[0]["DATE"], true)
+    : "";
+
+  // --------------------------------------------------
+  // Headshot Fetcher
+  // --------------------------------------------------
+  useEffect(() => {
+    if (!selectedPlayer) return setPlayerPhotoUrl(null);
     let cancelled = false;
-    fetchEspnHeadshotUrl(selectedPlayer, id).then((url) => {
-      if (!cancelled) setPlayerPhotoUrl(url || null);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedPlayer, rows]);
+    setTimeout(() => {
+      const games = gamesByPlayer.get(normalize(selectedPlayer));
+      const row = games?.[0];
+      const id = row ? row["PLAYER-ID"] : null;
+      fetchEspnHeadshotUrl(selectedPlayer, id).then((url) => {
+        if (!cancelled) setPlayerPhotoUrl(url || null);
+      });
+    }, 50);
+    return () => (cancelled = true);
+  }, [selectedPlayer, gamesByPlayer]);
 
-  // 🎨 UI
-  if (error)
-    return (
-      <div style={{ padding: 20, color: "red", textAlign: "center" }}>
-        ❌ {error}
-      </div>
-    );
+  // --------------------------------------------------
+  // Render
+  // --------------------------------------------------
+  if (error) return <div style={{ color: "red", padding: 20 }}>{error}</div>;
 
   return (
     <div style={{ padding: 20, maxWidth: 1150, margin: "auto" }}>
@@ -251,53 +273,55 @@ export default function PlayerDashboard() {
       </h2>
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 30 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 30, flexWrap: "wrap" }}>
         <select
           value={selectedTeam}
           onChange={(e) => {
-            setSelectedTeam(e.target.value);
-            setSelectedPlayer("");
+            startTransition(() => {
+              setSelectedTeam(e.target.value);
+              setSelectedPlayer("");
+              setSelectedOpponent("");
+            });
           }}
         >
           <option value="">Select Team</option>
           {teams.map((t) => (
-            <option key={`team-${t}`} value={t}>
-              {t}
-            </option>
+            <option key={t}>{t}</option>
           ))}
         </select>
 
         <select
           value={selectedPlayer}
-          onChange={(e) => setSelectedPlayer(e.target.value)}
+          onChange={(e) => {
+            startTransition(() => setSelectedPlayer(e.target.value));
+          }}
           disabled={!selectedTeam}
         >
           <option value="">
             {selectedTeam ? "Select Player" : "Select a team first"}
           </option>
           {roster.map((p) => (
-            <option key={`player-${p}`} value={p}>
-              {p}
-            </option>
+            <option key={p}>{p}</option>
           ))}
         </select>
 
         <select
           value={selectedOpponent}
-          onChange={(e) => setSelectedOpponent(e.target.value)}
+          onChange={(e) => startTransition(() => setSelectedOpponent(e.target.value))}
         >
-          <option>All Opponents</option>
+          <option value="">All Opponents</option>
           {opponents.map((o) => (
-            <option key={`opp-${o}`} value={o}>
-              {o}
-            </option>
+            <option key={o}>{o}</option>
           ))}
         </select>
       </div>
 
+      {isPending && <div style={{ opacity: 0.6 }}>Loading…</div>}
+
       {/* Player Section */}
       {selectedPlayer && (
         <>
+          {/* Player Overview */}
           <div
             style={{
               display: "grid",
@@ -306,7 +330,6 @@ export default function PlayerDashboard() {
               marginBottom: 30,
             }}
           >
-            {/* Player Card */}
             <div
               style={{
                 border: "1px solid #e5e7eb",
@@ -324,8 +347,8 @@ export default function PlayerDashboard() {
                     width: 120,
                     height: 120,
                     borderRadius: "50%",
-                    marginBottom: 10,
                     objectFit: "cover",
+                    marginBottom: 10,
                   }}
                 />
               ) : (
@@ -335,13 +358,12 @@ export default function PlayerDashboard() {
                     height: 120,
                     borderRadius: "50%",
                     background: "#e5e7eb",
+                    margin: "auto",
                     marginBottom: 10,
                   }}
                 />
               )}
-              <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>
-                {selectedPlayer}
-              </div>
+              <div style={{ fontWeight: 800, fontSize: 18 }}>{selectedPlayer}</div>
               <div style={{ color: "#475569" }}>{selectedTeam}</div>
             </div>
 
@@ -361,7 +383,7 @@ export default function PlayerDashboard() {
                       Category
                     </th>
                     {STAT_KEYS.map((k) => (
-                      <th key={`hdr-${k}`} style={{ padding: "6px 10px" }}>
+                      <th key={k} style={{ padding: "6px 10px" }}>
                         {k}
                       </th>
                     ))}
@@ -375,12 +397,10 @@ export default function PlayerDashboard() {
                     ["Last Game", last1],
                     ["Next Game Projection", nextGameProjection],
                   ].map(([label, data]) => (
-                    <tr key={`row-${label}`}>
-                      <td style={{ fontWeight: 600, padding: "6px 10px" }}>
-                        {label}
-                      </td>
+                    <tr key={label}>
+                      <td style={{ fontWeight: 600, padding: "6px 10px" }}>{label}</td>
                       {STAT_KEYS.map((k) => (
-                        <td key={`cell-${label}-${k}`} style={{ padding: "6px 10px" }}>
+                        <td key={k} style={{ padding: "6px 10px" }}>
                           {data[k] || "0.0"}
                         </td>
                       ))}
@@ -391,7 +411,7 @@ export default function PlayerDashboard() {
             </div>
           </div>
 
-          {/* 📈 Last 10 Games Trend Chart */}
+          {/* Chart */}
           <div
             style={{
               border: "1px solid #e5e7eb",
@@ -408,9 +428,16 @@ export default function PlayerDashboard() {
                 margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
               >
                 <CartesianGrid stroke="#f1f5f9" />
-                <XAxis dataKey="DATE" tick={{ fontSize: 12 }} />
+                <XAxis
+                  dataKey="DATE"
+                  tickFormatter={(d) => formatExcelDate(d, true)}
+                  tick={{ fontSize: 12 }}
+                />
                 <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
+                <Tooltip
+                  labelFormatter={(l) => formatExcelDate(l, true)}
+                  formatter={(v, n) => [v, n]}
+                />
                 <Legend />
                 <Line type="monotone" dataKey="PTS" stroke="#2563eb" />
                 <Line type="monotone" dataKey="TOT" stroke="#10b981" />
@@ -420,7 +447,7 @@ export default function PlayerDashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* 🧠 Vs Opponent Table */}
+          {/* Opponent Average */}
           {opponentAvg && (
             <div
               style={{
@@ -436,16 +463,14 @@ export default function PlayerDashboard() {
                 <thead>
                   <tr style={{ background: "#1d4ed8", color: "white" }}>
                     {STAT_KEYS.map((k) => (
-                      <th key={`opp-${k}`} style={{ padding: "6px 10px" }}>
-                        {k}
-                      </th>
+                      <th key={k}>{k}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     {STAT_KEYS.map((k) => (
-                      <td key={`opp-val-${k}`} style={{ padding: "6px 10px" }}>
+                      <td key={k} style={{ padding: "6px 10px" }}>
                         {opponentAvg[k]}
                       </td>
                     ))}
@@ -455,89 +480,45 @@ export default function PlayerDashboard() {
             </div>
           )}
 
-          {/* 🧮 Last 5 Games Table */}
+          {/* Last 5 Games */}
           <div
             style={{
               border: "1px solid #e5e7eb",
               borderRadius: 12,
               background: "#fff",
               padding: 16,
-              marginBottom: 24,
             }}
           >
-            <h3>LAST 5 GAMES</h3>
+            <h3>
+              LAST 5 GAMES{" "}
+              {latestDate && (
+                <span style={{ fontWeight: "normal" }}>
+                  (through {latestDate})
+                </span>
+              )}
+            </h3>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#1d4ed8", color: "white" }}>
                   <th>Date</th>
                   <th>Opponent</th>
                   {STAT_KEYS.map((k) => (
-                    <th key={`h5-${k}`}>{k}</th>
+                    <th key={k}>{k}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {playerRows.slice(0, 5).map((g, i) => (
-                  <tr
-                    key={`game-${g["DATE"] || i}`}
-                    style={{ background: i % 2 === 0 ? "#f9fafb" : "#fff" }}
-                  >
-                    <td>{g["DATE"]}</td>
+                  <tr key={i} style={{ background: i % 2 ? "#f9fafb" : "#fff" }}>
+                    <td>{formatExcelDate(g["DATE"], true)}</td>
                     <td>{g["OPPONENT TEAM"]}</td>
                     {STAT_KEYS.map((k) => (
-                      <td key={`gcell-${i}-${k}`}>{g[columnMap[k]] ?? 0}</td>
+                      <td key={k}>{g[columnMap[k]] ?? 0}</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
-
-          {/* ⚡ Team Summary Toggle */}
-          <div
-            style={{
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              background: "#fff",
-              padding: 16,
-            }}
-          >
-            <button
-              onClick={() => setShowTeamSummary(!showTeamSummary)}
-              style={{
-                padding: "10px 14px",
-                background: "#1d4ed8",
-                color: "white",
-                border: "none",
-                borderRadius: 8,
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
-            >
-              {showTeamSummary ? "Hide Team Summary" : "Show Team Summary"}
-            </button>
-
-            {showTeamSummary && (
-              <div style={{ marginTop: 16 }}>
-                <h3>⚡ Top 5 Players ({selectedTeam})</h3>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#1d4ed8", color: "white" }}>
-                      <th>Player</th>
-                      <th>PPG</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {teamSummary.map((p) => (
-                      <tr key={p.player}>
-                        <td>{p.player}</td>
-                        <td>{p.ppg}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
           </div>
         </>
       )}
