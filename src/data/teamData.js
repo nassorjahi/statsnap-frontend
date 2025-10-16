@@ -1,9 +1,16 @@
-// src/data/teamData.js
+// ============================================================
+// 🏀 StatSnap — Shared Data & API Configuration
+// ------------------------------------------------------------
+// ✅ Uses Render live backend (auto-switches for local dev)
+// ✅ Includes official ESPN logo codes + team gradients
+// ✅ Shared helpers for consistent team/player display
+// ============================================================
 
-// 🏀 API endpoint for local server
-export const API_URL = "http://localhost:8080/api";
-
-
+// 🧠 API endpoint — auto-select live or local
+export const API_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:5050/api" // local dev server
+    : "https://statsnap-backend.onrender.com/api"; // Render live backend
 
 // ✅ ESPN team logo codes
 export const espnLogoCode = {
