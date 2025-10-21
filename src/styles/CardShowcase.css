@@ -1,0 +1,117 @@
+/* ==========================================================
+   🧱 STATSNAP SHOWCASE LAYOUT — Perfect Grid Spacing
+   ========================================================== */
+
+.card-showcase-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  background-color: #0b1220;
+  min-height: 100vh;
+}
+
+.showcase-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 2.5rem;
+  background: linear-gradient(90deg, #0195da, #ffa610);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ✅ Centered, even spacing grid */
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  justify-content: center;
+  align-items: start;
+  gap: 2.5rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+/* ✅ Equal card height */
+.stat-card {
+  min-height: 460px;
+  max-width: 350px;
+  width: 100%;
+  border-radius: 1rem;
+  background-color: #0f1826;
+  border: 1px solid #1e293b;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* ✅ Back Button styling */
+.back-btn-wrapper {
+  margin-top: 2.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.back-btn {
+  background: linear-gradient(90deg, #0195da, #ffa610);
+  border: none;
+  padding: 0.6rem 1.6rem;
+  border-radius: 20px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+.showcase-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 2rem; /* consistent spacing between cards */
+  min-height: 100vh;
+  width: 100%;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  width: 280px;
+  height: 420px; /* ensures all cards align evenly */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  text-align: center;
+  color: #fff;
+  transition: all 0.3s ease-in-out;
+}
+
+.stat-card.glow {
+  box-shadow: 0 0 30px rgba(255, 165, 0, 0.4);
+  border-color: rgba(255, 165, 0, 0.4);
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+}
+
+@media (max-width: 900px) {
+  .showcase-container {
+    flex-direction: column;
+    align-items: center;
+  }
+  .stat-card {
+    width: 90%;
+    height: auto;
+  }
+}

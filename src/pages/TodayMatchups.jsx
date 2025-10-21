@@ -1,364 +1,162 @@
 // ==========================================================
-// 🏀 MATCHUP DEEP DIVE — UNIVERSAL TEAM EDITION
+// 🏀 TODAY'S MATCHUPS — LIVE API EDITION (StatSnap)
 // ----------------------------------------------------------
-// ✅ Pulls live data from backend APIs
-// ✅ Lists all teams dynamically (no hardcoding)
-// ✅ Auto-generates Smart Bets + Head-to-Head
-// ✅ Works with /api/ab/player-feed, /api/ab/games/today, /api/ab/teams
+// ✅ Pulls from API-Basketball routes: games, odds, predictions
+// ✅ Auto-fallback to upcoming games if no live games today
+// ✅ Friendly beginner layout (Spread, Total, Confidence)
+// ✅ Keeps debug logs for development
 // ==========================================================
 
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import { motion } from "framer-motion";
 import { API_URL } from "../data/teamData";
-import { fetchEspnHeadshotUrl } from "../utils/playerImageFetcher";
-import "../styles/MatchupDeepDive.css";
+import "../styles/TodayMatchups.css";
 
-export default function MatchupDeepDive() {
+export default function TodayMatchups() {
   const [games, setGames] = useState([]);
-  const [playerFeed, setPlayerFeed] = useState([]);
-  const [teams, setTeams] = useState([]);
-  const [homeTeam, setHomeTeam] = useState("");
-  const [awayTeam, setAwayTeam] = useState("");
-  const [selectedHomePlayers, setSelectedHomePlayers] = useState([]);
-  const [selectedAwayPlayers, setSelectedAwayPlayers] = useState([]);
-  const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-  const [viewRoster, setViewRoster] = useState("both");
+  const [status, setStatus] = useState("Loading...");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   // =====================================================
-  // 1️⃣ Load Live Data — dynamic, non-hardcoded
+  // 🧠 LOAD LIVE + UPCOMING GAMES (with odds & predictions)
   // =====================================================
   useEffect(() => {
-    const loadData = async () => {
+    const loadGames = async () => {
+      console.group("🔍 TodayMatchups (Live API Mode)");
       try {
-        const [gamesRes, playerRes, teamsRes] = await Promise.all([
-          axios.get(`${API_URL}/ab/games/today`),
-          axios.get(`${API_URL}/ab/player-feed`),
-          axios.get(`${API_URL}/ab/teams`),
-        ]);
+        // --- Fetch live games first ---
+        const liveRes = await axios.get(`${API_URL}/api/ab/games/today`)
 
-        const gamesData = gamesRes.data?.response || gamesRes.data?.data || [];
-        const playerData =
-          playerRes.data?.response || playerRes.data?.data || [];
+        let gameList = liveRes.data?.data || [];
 
-        // Try to get teams from API or fallback to unique team names in playerFeed
-        let teamList =
-          teamsRes.data?.data?.map((t) => t.Team || t.name) ||
-          teamsRes.data?.response?.map((t) => t.Team || t.name) ||
-          [];
-
-        if (!teamList.length && playerData.length) {
-          const fromFeed = playerData.map((p) => p["OWN TEAM"]).filter(Boolean);
-          teamList = [...new Set(fromFeed)];
+        if (!Array.isArray(gameList) || !gameList.length) {
+          console.log("⚠️ No live games — fetching upcoming instead...");
+          const nextRes = await axios.get(`${API_URL}/ab/games/upcoming`);
+          gameList = nextRes.data?.data || [];
+          setStatus("Upcoming Games");
+        } else {
+          setStatus("Today's Games");
         }
 
-        setGames(gamesData);
-        setPlayerFeed(playerData);
-        setTeams(
-          [...new Set(teamList)].sort((a, b) =>
-            a.localeCompare(b, undefined, { sensitivity: "base" })
-          )
-        );
+        console.log(`📊 Loaded ${gameList.length} games`);
+
+        // --- Fetch odds + predictions ---
+        const [oddsRes, predRes] = await Promise.all([
+          axios.get(`${API_URL}/ab/odds?bookmaker=FanDuel`),
+          axios.get(`${API_URL}/ab/predictions`),
+        ]);
+
+        const oddsList = oddsRes.data?.data || [];
+        const predList = predRes.data?.data || [];
+
+        console.log(`💰 Odds count: ${oddsList.length}`);
+        console.log(`🔮 Predictions count: ${predList.length}`);
+
+        // --- Combine all data ---
+        const merged = gameList.map((g) => {
+          const home = g.home?.name || g.HomeTeam || g.homeTeam || g.home || "Unknown";
+          const away = g.away?.name || g.AwayTeam || g.awayTeam || g.away || "Unknown";
+          const date = g.date || g.game_date || g.start || "N/A";
+
+          const odds = oddsList.find(
+            (o) => o.teams?.home === home || o.teams?.away === away
+          );
+          const pred = predList.find(
+            (p) => p.home?.name === home || p.away?.name === away
+          );
+
+          return {
+            home,
+            away,
+            date,
+            spread: odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0]?.odd || "N/A",
+            total: odds?.bookmakers?.[0]?.bets?.[1]?.values?.[0]?.odd || "N/A",
+            pick: pred?.winner?.name || "N/A",
+            confidence: pred?.confidence ? `${pred.confidence}%` : "N/A",
+          };
+        });
+
+        setGames(merged);
       } catch (err) {
-        console.error("❌ Error loading live data:", err);
-        setError("Failed to load live NBA data.");
+        console.error("❌ Error loading matchups:", err);
+        setError("Failed to load NBA data. Please try again later.");
+      } finally {
+        setLoading(false);
+        console.groupEnd();
       }
     };
-    loadData();
+
+    loadGames();
   }, []);
 
   // =====================================================
-  // 2️⃣ Player Logic + Smart Bets
+  // 🧩 Derived helpers
   // =====================================================
-  const calcBet = (stat, p, isHome) => {
-    const avg = Number(p[stat]) || 0;
-    const adj = avg * (isHome ? 1.05 : 0.95);
-    const line = (Math.round(adj * 2) / 2).toFixed(1);
-    const conf = Math.min(99, Math.max(70, 70 + Math.random() * 30));
-    return { line, confidence: conf };
-  };
+  const hasGames = useMemo(() => games && games.length > 0, [games]);
 
-  const color = (c) => (c >= 90 ? "high" : c >= 80 ? "medium" : "low");
-
-  const handleTeamSelect = (team, isHome) => {
-    if (!team) return;
-
-    const teamPlayers = playerFeed.filter(
-      (p) => p["OWN TEAM"]?.toLowerCase() === team.toLowerCase()
-    );
-
-    if (!teamPlayers.length) return;
-
-    const uniquePlayers = Array.from(
-      new Map(teamPlayers.map((p) => [p["PLAYER FULL NAME"], p])).values()
-    ).slice(0, 6);
-
-    const picks = uniquePlayers.map((p) => {
-      const { line, confidence } = calcBet("PTS", p, isHome);
-      return { ...p, stat: "PTS", line, confidence };
-    });
-
-    if (isHome) {
-      setHomeTeam(team);
-      setSelectedHomePlayers(picks);
-    } else {
-      setAwayTeam(team);
-      setSelectedAwayPlayers(picks);
-    }
-  };
-
-  const panel = (team, isHome) => {
-    const selectedPlayers = isHome ? selectedHomePlayers : selectedAwayPlayers;
-    if (!team || !selectedPlayers.length) return null;
-
+  // =====================================================
+  // 🧩 Render
+  // =====================================================
+  if (loading) {
     return (
-      <>
-        <div className="team-stats">
-          <h4>{isHome ? "Home" : "Away"} Team</h4>
-          <p>
-            <strong>Players:</strong> {selectedPlayers.length}
-          </p>
-        </div>
-
-        <div className="player-preview">
-          {selectedPlayers.map((p, i) => (
-            <div key={i} className={`player-card ${color(p.confidence)}`}>
-              <img
-                src={fetchEspnHeadshotUrl(p["PLAYER FULL NAME"])}
-                alt={p["PLAYER FULL NAME"]}
-                onError={(e) => (e.currentTarget.style.visibility = "hidden")}
-              />
-              <h5>{p["PLAYER FULL NAME"]}</h5>
-              <p>
-                <strong>{p.stat}</strong> O {p.line}
-              </p>
-              <motion.div
-                className={`confidence-bar ${color(p.confidence)}`}
-                initial={{ width: "0%" }}
-                animate={{ width: `${p.confidence}%` }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-              >
-                {p.confidence.toFixed(0)}%
-              </motion.div>
-            </div>
-          ))}
-        </div>
-      </>
-    );
-  };
-
-  // =====================================================
-  // 3️⃣ Smart Bets (Top 5)
-  // =====================================================
-  const best = useMemo(() => {
-    if (!homeTeam && !awayTeam) return [];
-    const both = [];
-
-    const collect = (team, isHome) => {
-      const players = playerFeed.filter(
-        (p) => p["OWN TEAM"]?.toLowerCase() === team.toLowerCase()
-      );
-      players.slice(0, 5).forEach((p) => {
-        ["PTS", "REB", "AST", "3P"].forEach((s) => {
-          const { line, confidence } = calcBet(s, p, isHome);
-          both.push({
-            player: p["PLAYER FULL NAME"],
-            team,
-            stat: s,
-            line,
-            confidence,
-          });
-        });
-      });
-    };
-
-    if (homeTeam) collect(homeTeam, true);
-    if (awayTeam) collect(awayTeam, false);
-
-    return both.sort((a, b) => b.confidence - a.confidence).slice(0, 5);
-  }, [homeTeam, awayTeam, playerFeed]);
-
-  // =====================================================
-  // 4️⃣ Head-to-Head (Last 5)
-  // =====================================================
-  const headToHeadGames = useMemo(() => {
-    if (!homeTeam || !awayTeam) return [];
-    const matchups = playerFeed.filter(
-      (r) =>
-        (r["OWN TEAM"]?.toLowerCase() === homeTeam.toLowerCase() &&
-          r["OPPONENT TEAM"]?.toLowerCase() === awayTeam.toLowerCase()) ||
-        (r["OWN TEAM"]?.toLowerCase() === awayTeam.toLowerCase() &&
-          r["OPPONENT TEAM"]?.toLowerCase() === homeTeam.toLowerCase())
-    );
-
-    const grouped = {};
-    matchups.forEach((g) => {
-      const key = g["DATE"];
-      if (!grouped[key])
-        grouped[key] = {
-          date: g["DATE"],
-          home: homeTeam,
-          away: awayTeam,
-          roster: [],
-        };
-      grouped[key].roster.push(g);
-    });
-
-    return Object.values(grouped)
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(0, 5);
-  }, [homeTeam, awayTeam, playerFeed]);
-
-  const selectedGame = headToHeadGames[selectedGameIndex] || null;
-  const rosterToShow = selectedGame?.roster?.slice(0, 10) || [];
-
-  // =====================================================
-  // 5️⃣ Render
-  // =====================================================
-  if (error) return <div style={{ color: "red", padding: 20 }}>{error}</div>;
-
-  return (
-    <>
-      <div className="matchup-container">
-        {/* Away Team */}
-        <div className="panel left-panel">
-          <h2>🚗 Away Team</h2>
-          <select
-            value={awayTeam}
-            onChange={(e) => handleTeamSelect(e.target.value, false)}
-          >
-            <option value="">Select Team</option>
-            {teams.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          {panel(awayTeam, false)}
-        </div>
-
-        {/* Home Team */}
-        <div className="panel right-panel">
-          <h2>🏠 Home Team</h2>
-          <select
-            value={homeTeam}
-            onChange={(e) => handleTeamSelect(e.target.value, true)}
-          >
-            <option value="">Select Team</option>
-            {teams.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-          {panel(homeTeam, true)}
-        </div>
-
-        {/* Smart Bets */}
-        <div className="bets-panel compact">
-          <h2>🔥 Top 5 Smart Bets</h2>
-          {best.length === 0 ? (
-            <p>Select both teams to see top bets.</p>
-          ) : (
-            <table className="smart-bet-table">
-              <thead>
-                <tr>
-                  <th>Player</th>
-                  <th>Team</th>
-                  <th>Stat</th>
-                  <th>Line</th>
-                  <th>Conf.</th>
-                </tr>
-              </thead>
-              <tbody>
-                {best.map((b, i) => (
-                  <tr key={i}>
-                    <td>{b.player}</td>
-                    <td>{b.team}</td>
-                    <td>{b.stat}</td>
-                    <td>O {b.line}</td>
-                    <td>
-                      <motion.div
-                        className={`confidence-bar ${color(b.confidence)}`}
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${b.confidence}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                      >
-                        {b.confidence.toFixed(0)}%
-                      </motion.div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+      <div className="loading">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+        >
+          🏀
+        </motion.div>
+        <p>{status}</p>
       </div>
+    );
+  }
 
-      {/* Head-to-Head Section */}
-      {homeTeam && awayTeam && selectedGame && (
-        <div className="headtohead-panel fullwidth">
-          <h2>🏀 Head-to-Head Matchups (Last 5)</h2>
-          <div className="matchup-buttons">
-            {headToHeadGames.map((g, i) => (
-              <button
-                key={i}
-                className={`matchup-btn ${
-                  selectedGameIndex === i ? "active" : ""
-                }`}
-                onClick={() => setSelectedGameIndex(i)}
-              >
-                {new Date(g.date).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </button>
-            ))}
-          </div>
+  if (error) {
+    return (
+      <div style={{ color: "red", padding: 20 }}>
+        <strong>{error}</strong>
+      </div>
+    );
+  }
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`${selectedGameIndex}-${viewRoster}`}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4 }}
-              className="boxscore-table-container"
-            >
-              <h4>
-                {awayTeam} @ {homeTeam} —{" "}
-                {new Date(selectedGame.date).toLocaleDateString()}
-              </h4>
-              <table className="smart-bet-table">
-                <thead>
-                  <tr>
-                    <th>Player</th>
-                    <th>PTS</th>
-                    <th>REB</th>
-                    <th>AST</th>
-                    <th>STL</th>
-                    <th>BLK</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rosterToShow.map((s, i) => (
-                    <tr key={i}>
-                      <td>{s["PLAYER FULL NAME"]}</td>
-                      <td>{s["PTS"]}</td>
-                      <td>{s["TOT"]}</td>
-                      <td>{s["A"]}</td>
-                      <td>{s["ST"]}</td>
-                      <td>{s["BL"]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      )}
-    </>
+  if (!hasGames) {
+    return (
+      <div className="empty text-center mt-10 text-gray-500">
+        No live or upcoming NBA games available right now.
+      </div>
+    );
+  }
+
+  // =====================================================
+  // 🏀 Render Table
+  // =====================================================
+  return (
+    <div className="today-matchups p-4">
+      <h2 className="text-xl font-bold mb-3">{status}</h2>
+      <table className="table-auto w-full text-sm border">
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="text-left p-2">Matchup</th>
+            <th className="text-left p-2">Spread</th>
+            <th className="text-left p-2">Total</th>
+            <th className="text-left p-2">Prediction</th>
+            <th className="text-left p-2">Confidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {games.map((g, i) => (
+            <tr key={i} className="border-t hover:bg-gray-50">
+              <td className="p-2">{g.away} @ {g.home}</td>
+              <td className="p-2">{g.spread}</td>
+              <td className="p-2">{g.total}</td>
+              <td className="p-2">{g.pick}</td>
+              <td className="p-2">{g.confidence}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

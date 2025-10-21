@@ -1,18 +1,28 @@
 // ============================================================
-// 🏀 StatSnap — Shared Data & API Configuration
+// 🏀 StatSnap — Shared Data & API Configuration (2025–2026)
 // ------------------------------------------------------------
-// ✅ Uses Render live backend (auto-switches for local dev)
-// ✅ Includes official ESPN logo codes + team gradients
-// ✅ Shared helpers for consistent team/player display
+// ✅ Auto-picks backend URL (env → localhost → Render)
+// ✅ Exposes LEAGUE_ID and CURRENT_SEASON for consistency
+// ✅ Includes ESPN logo codes + team gradients
+// ✅ Tiny helpers for clean player/team display
 // ============================================================
 
-// 🧠 API endpoint — auto-select live or local
+// 🔧 Backend base URL (priority: Vite env → localhost → Render)
+const fromEnv = typeof import.meta !== "undefined" && import.meta.env
+  ? import.meta.env.VITE_API_URL
+  : undefined;
+
 export const API_URL =
   window.location.hostname === "localhost"
-    ? "http://localhost:5050/api" // local dev server
-    : "https://statsnap-backend.onrender.com/api"; // Render live backend
+    ? "http://localhost:5050"
+    : "https://statsnap-backend.onrender.com";
 
-// ✅ ESPN team logo codes
+
+// 🔢 API-Basketball constants
+export const LEAGUE_ID = 12;           // NBA
+export const CURRENT_SEASON = "2025-2026";
+
+// ✅ ESPN team logo codes (as used elsewhere in the app)
 export const espnLogoCode = {
   "Atlanta Hawks": "atl",
   "Boston Celtics": "bos",
@@ -86,3 +96,7 @@ export const posLetter = (raw) => {
   const c = raw.trim()[0]?.toUpperCase();
   return ["F", "G", "C"].includes(c) ? c : c || "";
 };
+
+// 🧰 Small utility: build a backend URL with path
+export const api = (path = "") =>
+  `${API_URL}${path.startsWith("/") ? path : `/${path}`}`;

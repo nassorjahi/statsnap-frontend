@@ -1,0 +1,20 @@
+/* ==========================================================
+   🧠 GLOBAL PLAYER IMAGE FIX (Final)
+   ----------------------------------------------------------
+   Uses CSS masking to crop all NBA player headshots
+   to a perfect circle and zoom into the face.
+   ========================================================== */
+
+.player-headshot {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center top;
+  transform: scale(1.7); /* zoom tighter on face */
+  border: 2px solid #0195da;
+  background-color: #0f1826;
+  overflow: hidden;
+  mask-image: radial-gradient(circle at center, black 95%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 95%, transparent 100%);
+}

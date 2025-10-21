@@ -88,52 +88,108 @@ export default function MatchupDeepDive() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [gamesRes, playerRes, teamsRes] = await Promise.all([
-          axios.get(`${API_URL}/ab/games/today`),
-          axios.get(`${API_URL}/ab/player-feed`),
-          axios.get(`${API_URL}/ab/teams`),
-        ]);
+        // ✅ Handle player-feed gracefully
+const [gamesRes, teamsRes, playerRes] = await Promise.allSettled([
+  axios.get(`${API_URL}/ab/games/today`),
+  axios.get(`${API_URL}/ab/teams`),
+  axios.get(`${API_URL}/ab/player-feed`).catch(() => ({ data: { data: [] } })),
+]);
 
-        const gameData = gamesRes.data?.response || gamesRes.data?.data || [];
-        const playerData = playerRes.data?.response || playerRes.data?.data || [];
-        const teamData = teamsRes.data?.response || teamsRes.data?.data || [];
+const gameData =
+  gamesRes.value?.data?.response || gamesRes.value?.data?.data || [];
+const teamData =
+  teamsRes.value?.data?.response || teamsRes.value?.data?.data || [];
+const playerData =
+  playerRes.value?.data?.response || playerRes.value?.data?.data || [];
+
 
         // --- Normalize team names from all 3 sources ---
-        const teamNames = new Set();
+const teamNames = new Set();
 
-        // 1. From teams endpoint
-        teamData.forEach((t) => {
-          const name = fullTeamName(
-            t.Team || t.team_name || t.team || t.name || ""
-          );
-          if (name) teamNames.add(normalize(name));
-        });
+// 1️⃣ From /teams endpoint (your API uses "name" field)
+if (Array.isArray(teamData) && teamData.length > 0) {
+  teamData.forEach((t) => {
+    const name = fullTeamName(
+      t.name || t.Team || t.team_name || t.team || ""
+    );
+    if (name) teamNames.add(normalize(name));
+  });
+} else {
+  console.warn("⚠️ No team data from /teams — fallback will be used.");
+}
 
-        // 2. From player feed
-        playerData.forEach((p) => {
-          const own = fullTeamName(p["OWN TEAM"]);
-          const opp = fullTeamName(p["OPPONENT TEAM"]);
-          if (own) teamNames.add(normalize(own));
-          if (opp) teamNames.add(normalize(opp));
-        });
+// 2️⃣ From player feed (fallback source)
+playerData.forEach((p) => {
+  const own = fullTeamName(p["OWN TEAM"]);
+  const opp = fullTeamName(p["OPPONENT TEAM"]);
+  if (own) teamNames.add(normalize(own));
+  if (opp) teamNames.add(normalize(opp));
+});
 
-        // 3. From games today
-        gameData.forEach((g) => {
-          const home =
-            fullTeamName(g.HomeTeam || g.home_team || g.home || g.home_name);
-          const away =
-            fullTeamName(g.AwayTeam || g.away_team || g.away || g.away_name);
-          if (home) teamNames.add(normalize(home));
-          if (away) teamNames.add(normalize(away));
-        });
+// 3️⃣ From games today (for safety)
+gameData.forEach((g) => {
+  const home =
+    fullTeamName(g.HomeTeam || g.home_team || g.home || g.home_name);
+  const away =
+    fullTeamName(g.AwayTeam || g.away_team || g.away || g.away_name);
+  if (home) teamNames.add(normalize(home));
+  if (away) teamNames.add(normalize(away));
+});
 
-        const sortedTeams = Array.from(teamNames).sort((a, b) =>
-          a.localeCompare(b)
-        );
+// ✅ Sort alphabetically & save
+const sortedTeams = Array.from(teamNames).sort((a, b) =>
+  a.localeCompare(b, undefined, { sensitivity: "base" })
+);
+
+setTeams(sortedTeams);
+
 
         setTeams(sortedTeams);
         setPlayerFeed(playerData);
-        setGames(gameData);
+       useEffect(() => {
+  const loadData = async () => {
+    try {
+      const [gamesRes, playerRes, teamsRes] = await Promise.all([
+        axios.get(`${API_URL}/ab/games/today`),
+        axios.get(`${API_URL}/ab/player-feed`),
+        axios.get(`${API_URL}/ab/teams`),
+      ]);
+
+      const gameData = Array.isArray(gamesRes.data?.data)
+        ? gamesRes.data.data
+        : Array.isArray(gamesRes.data)
+        ? gamesRes.data
+        : [];
+
+      const playerData =
+        playerRes.data?.response || playerRes.data?.data || [];
+
+      let teamList =
+        teamsRes.data?.data?.map((t) => t.Team || t.name) ||
+        teamsRes.data?.response?.map((t) => t.Team || t.name) ||
+        [];
+
+      if (!teamList.length && playerData.length) {
+        const fromFeed = playerData.map((p) => p["OWN TEAM"]).filter(Boolean);
+        teamList = [...new Set(fromFeed)];
+      }
+
+      setGames(gameData);
+      setPlayerFeed(playerData);
+      setTeams(
+        [...new Set(teamList)].sort((a, b) =>
+          a.localeCompare(b, undefined, { sensitivity: "base" })
+        )
+      );
+      setError("");
+    } catch (err) {
+      console.error("❌ Error loading live data:", err);
+      setError("Failed to load live NBA data.");
+    }
+  };
+  loadData();
+}, []);
+
         setLoading(false);
       } catch (err) {
         console.error("❌ Data load error:", err);
@@ -192,13 +248,76 @@ export default function MatchupDeepDive() {
   // ----------------------------------------------
   // 🧩 Auto-Select Defaults
   // ----------------------------------------------
-  useEffect(() => {
-    if (teams.length >= 2 && !homeTeam && !awayTeam && !loading) {
-      const [first, second] = teams;
-      handleTeamSelect(first, false);
-      handleTeamSelect(second, true);
+  // ----------------------------------------------
+// 🧠 Load All Live Data (Teams + Player Feed)
+// ----------------------------------------------
+useEffect(() => {
+  const loadData = async () => {
+    try {
+      // ✅ Handle player-feed gracefully
+      const [gamesRes, teamsRes, playerRes] = await Promise.allSettled([
+        axios.get(`${API_URL}/ab/games/today`),
+        axios.get(`${API_URL}/ab/teams`),
+        axios.get(`${API_URL}/ab/player-feed`).catch(() => ({ data: { data: [] } })),
+      ]);
+
+      const gameData =
+        gamesRes.value?.data?.response || gamesRes.value?.data?.data || [];
+      const teamData =
+        teamsRes.value?.data?.response || teamsRes.value?.data?.data || [];
+      const playerData =
+        playerRes.value?.data?.response || playerRes.value?.data?.data || [];
+
+      // --- Normalize team names from all 3 sources ---
+      const teamNames = new Set();
+
+      // 1️⃣ From /teams endpoint (your API uses "name" field)
+      if (Array.isArray(teamData) && teamData.length > 0) {
+        teamData.forEach((t) => {
+          const name = fullTeamName(
+            t.name || t.Team || t.team_name || t.team || ""
+          );
+          if (name) teamNames.add(normalize(name));
+        });
+      } else {
+        console.warn("⚠️ No team data from /teams — fallback will be used.");
+      }
+
+      // 2️⃣ From player feed (fallback source)
+      playerData.forEach((p) => {
+        const own = fullTeamName(p["OWN TEAM"]);
+        const opp = fullTeamName(p["OPPONENT TEAM"]);
+        if (own) teamNames.add(normalize(own));
+        if (opp) teamNames.add(normalize(opp));
+      });
+
+      // 3️⃣ From games today (for safety)
+      gameData.forEach((g) => {
+        const home =
+          fullTeamName(g.HomeTeam || g.home_team || g.home || g.home_name);
+        const away =
+          fullTeamName(g.AwayTeam || g.away_team || g.away || g.away_name);
+        if (home) teamNames.add(normalize(home));
+        if (away) teamNames.add(normalize(away));
+      });
+
+      // ✅ Sort alphabetically & save
+      const sortedTeams = Array.from(teamNames).sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: "base" })
+      );
+
+      setTeams(sortedTeams);
+      setPlayerFeed(playerData);
+      setGames(gameData);
+      setLoading(false);
+    } catch (err) {
+      console.error("❌ Data load error:", err);
+      setError("Failed to load live NBA data.");
+      setLoading(false);
     }
-  }, [teams, homeTeam, awayTeam, handleTeamSelect, loading]);
+  };
+  loadData();
+}, []);
 
   // ----------------------------------------------
   // 🔥 Smart Bets

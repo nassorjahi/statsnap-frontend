@@ -1,0 +1,138 @@
+/* ==========================================================
+   💡 SMART BET CARD — StatSnap Bet Slip Replica
+   ---------------------------------------------------------- */
+
+.smart-bet-card {
+  background: linear-gradient(180deg, #0f1826 0%, #141f33 100%);
+  border: 1px solid #1e293b;
+  border-radius: 16px;
+  max-width: 320px;
+  min-height: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.4rem 1rem;
+  text-align: center;
+  color: #fff;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.smart-bet-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 25px rgba(255, 166, 16, 0.3);
+}
+
+/* --- Header --- */
+.bet-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.bet-logo-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.bet-logo {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-bottom: 0.25rem;
+}
+
+.bet-title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.bet-subtitle {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 0.25rem;
+}
+
+/* --- Gauge --- */
+.gauge-container {
+  width: 100px;
+  height: 100px;
+  margin: 0.75rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.4rem;
+}
+
+/* --- Bet Details --- */
+.bet-details {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  width: 100%;
+  text-align: left;
+}
+
+.bet-details li {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  margin: 0.3rem 0;
+}
+
+.bet-details li span {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* --- Edge Banner --- */
+.edge-banner {
+  background: linear-gradient(90deg, #0195da, #ffa610);
+  border-radius: 8px;
+  width: 100%;
+  text-align: center;
+  padding: 0.4rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f1826;
+  margin-top: 0.5rem;
+}
+
+.edge-value {
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+/* --- Footer --- */
+.bet-footer {
+  width: 100%;
+  text-align: left;
+  font-size: 0.8rem;
+  margin-top: 0.8rem;
+  color: #9ca3af;
+}
+
+.result-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #cbd5e1;
+}
+
+.result-value {
+  color: #4ad295;
+  font-weight: 600;
+}
+
+.footer-link {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  color: #64748b;
+  text-align: center;
+}

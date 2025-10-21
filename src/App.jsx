@@ -15,6 +15,9 @@ import PlayerDashboard from "./pages/PlayerDashboard";
 
 // ✅ Shared Helpers / Data
 import { espnLogoCode, teamGradients, posLetter } from "./data/teamData";
+import CardShowcase from "./pages/CardShowcase";
+
+
 
 // =============================
 // 🌐 API CONFIG — Auto-detect environment
@@ -41,7 +44,7 @@ export default function App() {
         <Route path="/matchup-deep-dive" element={<MatchupDeepDive />} />
         <Route path="/team-insights" element={<TeamInsights />} />
         <Route path="/player-dashboard" element={<PlayerDashboard />} />
-
+<Route path="/cards" element={<CardShowcase />} />
         {/* Catch-all fallback */}
         <Route path="*" element={<Navigate to="/matchups" replace />} />
       </Routes>

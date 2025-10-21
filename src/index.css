@@ -1,3 +1,6 @@
+@import "./styles/playerCardFix.css";
+
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -11,3 +14,30 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+/* 🔧 Ensure all StatSnap cards are the same height */
+/* Ensures all StatSnap cards are visually equal height */
+.stat-card {
+  min-height: 420px;
+  max-height: 420px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 1rem;
+}
+
+/* Prevent oversized images/logos */
+.stat-card img {
+  object-fit: contain;
+  max-height: 80px;
+}
+
+/* Keep grid stable on small screens */
+@media (max-width: 768px) {
+  .stat-card {
+    min-height: auto;
+    max-height: none;
+  }
+}
+
+

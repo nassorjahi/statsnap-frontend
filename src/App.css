@@ -4,6 +4,8 @@
 Functional layout, clean visuals,
 ready for future polish pass.
 ================================= */
+@import "./styles/playerCardFix.css";
+
 :root {
   --bg-color: #f8fafc;
   --text-color: #111827;
