@@ -1,10 +1,11 @@
 // ==========================================================
-// 🏀 TODAY'S MATCHUPS — LIVE API EDITION (StatSnap)
+// 🏀 TODAY'S MATCHUPS — LIVE API EDITION (StatSnap 2025–2026)
 // ----------------------------------------------------------
-// ✅ Pulls from API-Basketball routes: games, odds, predictions
-// ✅ Auto-fallback to upcoming games if no live games today
-// ✅ Friendly beginner layout (Spread, Total, Confidence)
-// ✅ Keeps debug logs for development
+// ✅ Fetches live games via API-Basketball
+// ✅ Falls back to upcoming games if no live matchups
+// ✅ Pulls odds & predictions with consistent API prefix
+// ✅ Beginner-friendly layout (Spread, Total, Confidence)
+// ✅ Clean logs + robust error handling for production
 // ==========================================================
 
 import React, { useState, useEffect, useMemo } from "react";
@@ -15,7 +16,7 @@ import "../styles/TodayMatchups.css";
 
 export default function TodayMatchups() {
   const [games, setGames] = useState([]);
-  const [status, setStatus] = useState("Loading...");
+  const [status, setStatus] = useState("Loading NBA data...");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -24,45 +25,60 @@ export default function TodayMatchups() {
   // =====================================================
   useEffect(() => {
     const loadGames = async () => {
-      console.group("🔍 TodayMatchups (Live API Mode)");
+      console.group("🔍 TodayMatchups — Live API Mode");
       try {
-        // --- Fetch live games first ---
-        const liveRes = await axios.get(`${API_URL}/api/ab/games/today`)
-
+        // --- Fetch today's games ---
+        console.log(`🌐 Fetching: ${API_URL}/api/ab/games/today`);
+        const liveRes = await axios.get(`${API_URL}/api/ab/games/today`);
         let gameList = liveRes.data?.data || [];
 
         if (!Array.isArray(gameList) || !gameList.length) {
-          console.log("⚠️ No live games — fetching upcoming instead...");
-          const nextRes = await axios.get(`${API_URL}/ab/games/upcoming`);
+          console.warn("⚠️ No live games — fetching upcoming schedule...");
+          const nextRes = await axios.get(`${API_URL}/api/ab/games/upcoming`);
           gameList = nextRes.data?.data || [];
           setStatus("Upcoming Games");
         } else {
           setStatus("Today's Games");
         }
 
-        console.log(`📊 Loaded ${gameList.length} games`);
+        console.log(`📊 Game count: ${gameList.length}`);
 
-        // --- Fetch odds + predictions ---
+        // --- Fetch odds + predictions (parallel) ---
+        console.log("🎲 Fetching odds and predictions...");
         const [oddsRes, predRes] = await Promise.all([
-          axios.get(`${API_URL}/ab/odds?bookmaker=FanDuel`),
-          axios.get(`${API_URL}/ab/predictions`),
+          axios.get(`${API_URL}/api/ab/odds?bookmaker=FanDuel`),
+          axios.get(`${API_URL}/api/ab/predictions`),
         ]);
 
         const oddsList = oddsRes.data?.data || [];
         const predList = predRes.data?.data || [];
 
-        console.log(`💰 Odds count: ${oddsList.length}`);
-        console.log(`🔮 Predictions count: ${predList.length}`);
+        console.log(`💰 Odds fetched: ${oddsList.length}`);
+        console.log(`🔮 Predictions fetched: ${predList.length}`);
 
-        // --- Combine all data ---
+        // --- Merge all data sources ---
         const merged = gameList.map((g) => {
-          const home = g.home?.name || g.HomeTeam || g.homeTeam || g.home || "Unknown";
-          const away = g.away?.name || g.AwayTeam || g.awayTeam || g.away || "Unknown";
+          const home =
+            g.teams?.home?.name ||
+            g.HomeTeam ||
+            g.home ||
+            g.homeTeam ||
+            "Unknown";
+          const away =
+            g.teams?.away?.name ||
+            g.AwayTeam ||
+            g.away ||
+            g.awayTeam ||
+            "Unknown";
           const date = g.date || g.game_date || g.start || "N/A";
 
           const odds = oddsList.find(
-            (o) => o.teams?.home === home || o.teams?.away === away
+            (o) =>
+              o.teams?.home === home ||
+              o.teams?.away === away ||
+              o.home_team === home
           );
+
           const pred = predList.find(
             (p) => p.home?.name === home || p.away?.name === away
           );
@@ -71,16 +87,25 @@ export default function TodayMatchups() {
             home,
             away,
             date,
-            spread: odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0]?.odd || "N/A",
-            total: odds?.bookmakers?.[0]?.bets?.[1]?.values?.[0]?.odd || "N/A",
+            spread:
+              odds?.bookmakers?.[0]?.bets?.[0]?.values?.[0]?.odd ||
+              odds?.spread ||
+              "N/A",
+            total:
+              odds?.bookmakers?.[0]?.bets?.[1]?.values?.[0]?.odd ||
+              odds?.total ||
+              "N/A",
             pick: pred?.winner?.name || "N/A",
-            confidence: pred?.confidence ? `${pred.confidence}%` : "N/A",
+            confidence: pred?.confidence
+              ? `${pred.confidence}%`
+              : "N/A",
           };
         });
 
         setGames(merged);
+        setError("");
       } catch (err) {
-        console.error("❌ Error loading matchups:", err);
+        console.error("❌ Error loading matchups:", err.message);
         setError("Failed to load NBA data. Please try again later.");
       } finally {
         setLoading(false);
@@ -94,17 +119,17 @@ export default function TodayMatchups() {
   // =====================================================
   // 🧩 Derived helpers
   // =====================================================
-  const hasGames = useMemo(() => games && games.length > 0, [games]);
+  const hasGames = useMemo(() => Array.isArray(games) && games.length > 0, [games]);
 
   // =====================================================
-  // 🧩 Render
+  // 🧩 Render States
   // =====================================================
   if (loading) {
     return (
       <div className="loading">
         <motion.div
           animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+          transition={{ repeat: Infinity, duration: 1.2, ease: "linear" }}
         >
           🏀
         </motion.div>
@@ -148,7 +173,7 @@ export default function TodayMatchups() {
         <tbody>
           {games.map((g, i) => (
             <tr key={i} className="border-t hover:bg-gray-50">
-              <td className="p-2">{g.away} @ {g.home}</td>
+              <td className="p-2">{`${g.away} @ ${g.home}`}</td>
               <td className="p-2">{g.spread}</td>
               <td className="p-2">{g.total}</td>
               <td className="p-2">{g.pick}</td>
